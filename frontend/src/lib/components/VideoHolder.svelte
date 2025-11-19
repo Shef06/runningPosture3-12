@@ -20,8 +20,7 @@
   
   let currentVideoIndex = 0;
   let videoAnalyzerRef;
-  
-  // Naviga tra i video baseline
+
   function nextVideo() {
     if (currentVideoIndex < baselineVideos.length - 1) {
       currentVideoIndex++;
@@ -38,15 +37,12 @@
     currentVideoIndex = index;
   }
   
-  // Inizializza webcam
   async function initCamera() {
     try {
-      // Ottieni lista telecamere disponibili
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cameras = devices.filter(device => device.kind === 'videoinput');
       analysisStore.setAvailableCameras(cameras);
       
-      // Usa la telecamera selezionata o la prima disponibile
       const deviceId = selectedCamera || (cameras[0]?.deviceId);
       
       if (deviceId) {
@@ -54,7 +50,6 @@
           video: { deviceId: { exact: deviceId } },
           audio: false
         });
-        
         if (videoElement) {
           videoElement.srcObject = stream;
         }
@@ -65,7 +60,6 @@
     }
   }
   
-  // Cambia telecamera
   async function changeCamera(deviceId) {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
@@ -74,7 +68,6 @@
     await initCamera();
   }
   
-  // Inizia registrazione
   async function startRecording() {
     if (!stream) {
       await initCamera();
@@ -82,7 +75,6 @@
     
     recordedChunks = [];
     mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-    
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         recordedChunks.push(event.data);
@@ -99,14 +91,12 @@
     analysisStore.setRecording(true);
   }
   
-  // Ferma registrazione
   function stopRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
     }
   }
   
-  // Cleanup
   function cleanup() {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
@@ -121,7 +111,6 @@
       initCamera();
     }
     
-    // Event listeners
     const handleChangeCamera = (e) => changeCamera(e.detail);
     const handleStartRecording = () => startRecording();
     const handleStopRecording = () => stopRecording();
@@ -136,13 +125,11 @@
       window.removeEventListener('stoprecording', handleStopRecording);
     };
   });
-  
+
   onDestroy(cleanup);
   
-  // Esponi funzioni per il parent
   export { startRecording, stopRecording, changeCamera };
-  
-  // Watch videoMethod per inizializzare camera
+
   $: if (videoMethod === 'record' && !stream) {
     initCamera();
   }
@@ -151,11 +138,9 @@
 <div class="video-holder">
   <div class="video-container">
     {#if mainFlow === 'baseline' && videoMethod === 'upload' && baselineVideos.length === 5 && isAnalyzing}
-      <!-- Creazione baseline con 5 video - invio diretto al backend -->
       <BaselineUploader />
     
     {:else if mainFlow === 'analyze' && videoUrl && videoMethod === 'upload'}
-      <!-- Analisi video singolo con scheletro -->
       <VideoAnalyzer 
         bind:this={videoAnalyzerRef}
         videoUrl={videoUrl}
@@ -166,38 +151,21 @@
       />
     
     {:else if mainFlow === 'baseline' && videoMethod === 'upload' && baselineVideos.length > 0}
-      <!-- Gallery 5 video baseline -->
       <div class="baseline-gallery">
         <div class="main-video">
           <video src={baselineVideoUrls[currentVideoIndex]} controls class="video-display">
             <track kind="captions" />
           </video>
           
-          <!-- Navigation -->
           {#if baselineVideos.length > 1}
             <div class="video-nav">
-              <button 
-                class="nav-btn prev" 
-                on:click={prevVideo}
-                disabled={currentVideoIndex === 0}
-              >
-                ‹
-              </button>
-              <span class="video-counter">
-                {currentVideoIndex + 1} / {baselineVideos.length}
-              </span>
-              <button 
-                class="nav-btn next" 
-                on:click={nextVideo}
-                disabled={currentVideoIndex === baselineVideos.length - 1}
-              >
-                ›
-              </button>
+              <button class="nav-btn prev" on:click={prevVideo} disabled={currentVideoIndex === 0}>‹</button>
+              <span class="video-counter">{currentVideoIndex + 1} / {baselineVideos.length}</span>
+              <button class="nav-btn next" on:click={nextVideo} disabled={currentVideoIndex === baselineVideos.length - 1}>›</button>
             </div>
           {/if}
         </div>
         
-        <!-- Thumbnail grid -->
         <div class="thumbnail-grid">
           {#each baselineVideos as video, index}
             <button 
@@ -216,18 +184,15 @@
       </div>
       
     {:else if videoUrl && videoMethod === 'upload'}
-      <!-- Video singolo caricato -->
       <video src={videoUrl} controls class="video-display">
         <track kind="captions" />
       </video>
     {:else if videoMethod === 'record'}
       {#if videoUrl}
-        <!-- Video registrato (playback) -->
         <video src={videoUrl} controls class="video-display">
           <track kind="captions" />
         </video>
       {:else}
-        <!-- Preview webcam -->
         <video bind:this={videoElement} autoplay playsinline muted class="video-display">
           <track kind="captions" />
         </video>
@@ -240,14 +205,13 @@
         {/if}
       {/if}
     {:else}
-      <!-- Placeholder -->
       <div class="video-placeholder">
         <div class="placeholder-content">
-          <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
-          <p>Video Placeholder</p>
-          <span class="hint">Il video apparirà qui</span>
+          <p>Anteprima Video</p>
+          <span class="hint">Il video o la webcam appariranno qui</span>
         </div>
       </div>
     {/if}
@@ -260,94 +224,75 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    background: var(--secondary-bg);
-    border-radius: var(--border-radius);
-    padding: 1rem;
-    box-shadow: var(--box-shadow);
-    box-sizing: border-box;
+    position: relative;
   }
   
   .video-container {
     flex: 1;
     position: relative;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 8px;
+    background: #000; /* Nero puro per il video */
+    border-radius: calc(var(--border-radius) - 4px);
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    margin: 1rem;
     min-height: 0;
-    width: 100%;
   }
   
   .video-display {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
   }
   
   .video-placeholder {
-    width: 100%;
-    height: 100%;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-  }
-  
-  .placeholder-content {
-    text-align: center;
-    color: rgba(255, 255, 255, 0.4);
-  }
-  
-  .placeholder-content svg {
-    opacity: 0.3;
-    margin-bottom: 1rem;
+    color: var(--text-muted);
+    opacity: 0.5;
   }
   
   .placeholder-content p {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     margin-bottom: 0.5rem;
+    font-weight: 500;
   }
   
-  .hint {
-    font-size: 0.9rem;
-    opacity: 0.7;
-  }
-  
+  .hint { font-size: 0.9rem; opacity: 0.7; }
+
+  /* Indicatore REC */
   .recording-indicator {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: rgba(231, 76, 60, 0.9);
+    top: 2rem;
+    right: 2rem;
+    background: rgba(239, 68, 68, 0.9);
     color: white;
     padding: 0.5rem 1rem;
-    border-radius: 20px;
+    border-radius: 30px;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+    backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-weight: 600;
-    animation: pulse 1.5s infinite;
+    font-weight: 700;
+    z-index: 10;
   }
   
   .recording-dot {
-    width: 12px;
-    height: 12px;
+    width: 8px;
+    height: 8px;
     background: white;
     border-radius: 50%;
     animation: blink 1s infinite;
   }
   
-  @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
-  }
-  
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-  }
+  @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
   
   /* Baseline Gallery */
   .baseline-gallery {
@@ -356,14 +301,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    box-sizing: border-box;
   }
   
   .main-video {
     flex: 1;
     position: relative;
     background: black;
-    border-radius: 8px;
     overflow: hidden;
     min-height: 0;
     display: flex;
@@ -371,90 +314,73 @@
     justify-content: center;
   }
   
-  .main-video .video-display {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-  }
-  
   .video-nav {
     position: absolute;
-    bottom: 1rem;
+    bottom: 1.5rem;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 1rem;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.6);
+    padding: 0.5rem 1.5rem;
+    border-radius: 30px;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1);
   }
   
   .nav-btn {
-    width: 32px;
-    height: 32px;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
     border: none;
     border-radius: 50%;
     color: white;
-    font-size: 1.5rem;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s ease;
-    padding: 0;
-    line-height: 1;
+    font-size: 1.2rem;
+    transition: all 0.2s;
   }
   
-  .nav-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
-  }
-  
-  .nav-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
+  .nav-btn:hover:not(:disabled) { background: rgba(255,255,255,0.3); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   
   .video-counter {
     color: white;
     font-weight: 600;
     font-size: 0.9rem;
-    min-width: 50px;
-    text-align: center;
+    font-variant-numeric: tabular-nums;
   }
   
   .thumbnail-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 0.5rem;
-    height: 80px;
+    height: 70px;
     flex-shrink: 0;
+    padding: 0 0.5rem 0.5rem 0.5rem;
   }
   
   .thumbnail-item {
     position: relative;
-    background: rgba(0, 0, 0, 0.5);
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: #000;
+    border: 2px solid transparent;
     border-radius: 6px;
     overflow: hidden;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s;
+    opacity: 0.6;
     padding: 0;
   }
   
-  .thumbnail-item:hover {
-    border-color: var(--accent-color);
-    transform: translateY(-2px);
-  }
+  .thumbnail-item:hover { opacity: 1; transform: translateY(-2px); }
   
   .thumbnail-item.active {
-    border-color: var(--success-color);
-    box-shadow: 0 0 10px var(--success-color);
+    border-color: #3b82f6;
+    opacity: 1;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
   }
   
   .thumbnail-preview {
@@ -465,29 +391,21 @@
   
   .thumbnail-number {
     position: absolute;
-    top: 4px;
-    left: 4px;
-    background: rgba(0, 0, 0, 0.8);
+    top: 2px;
+    left: 2px;
+    background: rgba(0, 0, 0, 0.7);
     color: white;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
   }
   
   .thumbnail-item.active .thumbnail-number {
-    background: var(--success-color);
-  }
-  
-  /* Rimuovi outline focus */
-  video:focus,
-  .thumbnail-item:focus,
-  .nav-btn:focus {
-    outline: none;
+    background: #3b82f6;
   }
 </style>
-
