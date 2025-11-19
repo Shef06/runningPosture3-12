@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Build
+.svelte-kit/
+build/
+dist/
+
+# Data e modelli
+backend/uploads/
+backend/models/
+*.h5
+*.npy
+
+# Dati vecchi (dalla struttura esistente)
+data/videos/
+models/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
