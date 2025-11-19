@@ -43,18 +43,21 @@
       <div class="logo-section">
         <div class="logo-icon">🏃</div>
         <div class="logo-text">
-          <h1>Running Posture Analyzer</h1>
-          <p class="subtitle">Analisi Biomeccanica Avanzata con AI</p>
+          <h1>Running Analyzer</h1>
+          <p class="subtitle">AI Biomechanical Analysis</p>
         </div>
       </div>
-      <div class="header-decoration"></div>
+      <div class="header-badges">
+        <span class="badge">AI</span>
+        <span class="badge">Real-time</span>
+        <span class="badge">3D</span>
+      </div>
     </div>
   </header>
   
   <main class="main-content">
     {#if error}
       <div class="alert alert-error">
-        <div class="alert-icon">⚠️</div>
         <span class="alert-text">{error}</span>
         <button class="close-btn" on:click={clearMessage}>×</button>
       </div>
@@ -72,16 +75,7 @@
   </main>
   
   <footer class="app-footer">
-    <div class="footer-content">
-      <div class="footer-text">
-        <p>Powered by MediaPipe + TensorFlow LSTM</p>
-        <div class="footer-badges">
-          <span class="badge">AI-Powered</span>
-          <span class="badge">Real-time</span>
-          <span class="badge">3D Analysis</span>
-        </div>
-      </div>
-    </div>
+    <p>MediaPipe + TensorFlow LSTM</p>
   </footer>
 </div>
 
@@ -93,69 +87,77 @@
   }
   
   .app-header {
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(15, 23, 42, 0.8);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    padding: 1.5rem 2rem;
+    padding: 0.75rem 1.5rem;
     border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-    position: relative;
-    z-index: 10;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    position: sticky;
+    top: 0;
+    z-index: 100;
   }
   
   .header-content {
     max-width: 1600px;
     margin: 0 auto;
-    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
   
   .logo-section {
     display: flex;
     align-items: center;
-    gap: 1.25rem;
+    gap: 0.75rem;
   }
   
   .logo-icon {
-    font-size: 3rem;
-    width: 70px;
-    height: 70px;
+    font-size: 2rem;
+    width: 42px;
+    height: 42px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(129, 140, 248, 0.2) 100%);
     backdrop-filter: blur(10px);
-    border-radius: 16px;
+    border-radius: 10px;
     border: 1px solid rgba(148, 163, 184, 0.18);
-    box-shadow: 0 8px 32px rgba(96, 165, 250, 0.2);
   }
   
   .logo-text h1 {
-    font-size: 2rem;
+    font-size: 1.25rem;
     font-weight: 700;
     background: linear-gradient(135deg, #f1f5f9 0%, #60a5fa 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: 0.25rem;
+    margin: 0;
     letter-spacing: -0.03em;
   }
   
   .subtitle {
     color: rgba(148, 163, 184, 0.9);
-    font-size: 0.9rem;
+    font-size: 0.7rem;
     margin: 0;
     font-weight: 500;
-    letter-spacing: 0.02em;
   }
   
-  .header-decoration {
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #60a5fa, #818cf8, transparent);
-    opacity: 0.6;
+  .header-badges {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .badge {
+    padding: 0.25rem 0.6rem;
+    background: rgba(96, 165, 250, 0.15);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    border-radius: 12px;
+    font-size: 0.65rem;
+    color: #93c5fd;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
   }
   
   .main-content {
@@ -163,20 +165,19 @@
     max-width: 1600px;
     width: 100%;
     margin: 0 auto;
-    padding: 1.5rem;
+    padding: 0.75rem;
     position: relative;
   }
   
   .alert {
-    padding: 1rem 3rem 1rem 1.5rem;
-    border-radius: 12px;
-    margin-bottom: 1.5rem;
+    padding: 0.6rem 2.5rem 0.6rem 1rem;
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
     position: relative;
     animation: slideIn 0.4s ease;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     display: flex;
     align-items: center;
-    gap: 1rem;
     backdrop-filter: blur(12px);
     border: 1px solid;
   }
@@ -198,32 +199,27 @@
     color: #fca5a5;
   }
   
-  .alert-icon {
-    font-size: 1.5rem;
-    flex-shrink: 0;
-  }
-  
   .alert-text {
     flex: 1;
   }
   
   .close-btn {
     position: absolute;
-    right: 1rem;
+    right: 0.5rem;
     top: 50%;
     transform: translateY(-50%);
     background: rgba(248, 113, 113, 0.2);
     border: 1px solid rgba(248, 113, 113, 0.3);
     color: #fca5a5;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     cursor: pointer;
     padding: 0;
-    width: 32px;
-    height: 32px;
+    width: 26px;
+    height: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    border-radius: 6px;
     transition: all 0.2s;
   }
   
@@ -234,105 +230,169 @@
   
   .analysis-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 1.5rem;
-    height: calc(100vh - 200px);
+    grid-template-columns: 1.8fr 1fr;
+    gap: 0.75rem;
+    height: calc(100vh - 140px);
     min-height: 500px;
   }
   
-  .video-section {
+  .video-section,
+  .step-section {
     height: 100%;
     width: 100%;
     overflow: hidden;
   }
   
   .step-section {
-    height: 100%;
-    width: 100%;
     overflow-y: auto;
   }
   
-  @media (max-width: 1200px) {
+  .app-footer {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 0.5rem 1.5rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    text-align: center;
+    font-size: 0.75rem;
+    color: rgba(148, 163, 184, 0.8);
+  }
+  
+  .app-footer p {
+    margin: 0;
+  }
+  
+  /* RESPONSIVE BREAKPOINTS */
+  
+  /* Laptop (992px - 1200px) */
+  @media (max-width: 1200px) and (min-width: 992px) {
+    .analysis-grid {
+      grid-template-columns: 1.5fr 1fr;
+      height: calc(100vh - 130px);
+    }
+    
+    .logo-text h1 {
+      font-size: 1.15rem;
+    }
+    
+    .subtitle {
+      font-size: 0.65rem;
+    }
+  }
+  
+  /* Tablet Horizontal (768px - 992px) */
+  @media (max-width: 992px) {
     .analysis-grid {
       grid-template-columns: 1fr;
       height: auto;
+      gap: 0.5rem;
     }
     
     .video-section {
-      height: 500px;
+      height: 60vh;
+      min-height: 400px;
     }
     
     .step-section {
       height: auto;
-      max-height: 700px;
+      max-height: 50vh;
+    }
+    
+    .header-badges {
+      display: none;
+    }
+    
+    .main-content {
+      padding: 0.5rem;
     }
   }
   
-  .app-footer {
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    padding: 1.5rem 2rem;
-    border-top: 1px solid rgba(148, 163, 184, 0.18);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-    position: relative;
-    z-index: 10;
-  }
-  
-  .footer-content {
-    max-width: 1600px;
-    margin: 0 auto;
-  }
-  
-  .footer-text {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-  
-  .footer-text p {
-    color: rgba(148, 163, 184, 0.8);
-    font-size: 0.9rem;
-    margin: 0;
-  }
-  
-  .footer-badges {
-    display: flex;
-    gap: 0.75rem;
-  }
-  
-  .badge {
-    padding: 0.35rem 0.85rem;
-    background: rgba(96, 165, 250, 0.15);
-    border: 1px solid rgba(96, 165, 250, 0.3);
-    border-radius: 20px;
-    font-size: 0.75rem;
-    color: #93c5fd;
-    font-weight: 600;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-  }
-  
+  /* Tablet Vertical (576px - 768px) */
   @media (max-width: 768px) {
+    .app-header {
+      padding: 0.5rem 1rem;
+    }
+    
     .logo-icon {
-      width: 55px;
-      height: 55px;
-      font-size: 2.5rem;
+      width: 36px;
+      height: 36px;
+      font-size: 1.75rem;
     }
     
     .logo-text h1 {
-      font-size: 1.5rem;
+      font-size: 1rem;
     }
     
     .subtitle {
-      font-size: 0.8rem;
+      font-size: 0.6rem;
     }
     
-    .footer-text {
-      justify-content: center;
-      text-align: center;
+    .video-section {
+      height: 50vh;
+      min-height: 350px;
+    }
+    
+    .step-section {
+      max-height: 45vh;
+    }
+  }
+  
+  /* Mobile (< 576px) */
+  @media (max-width: 576px) {
+    .app-header {
+      padding: 0.4rem 0.75rem;
+    }
+    
+    .logo-section {
+      gap: 0.5rem;
+    }
+    
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      font-size: 1.5rem;
+      border-radius: 8px;
+    }
+    
+    .logo-text h1 {
+      font-size: 0.9rem;
+    }
+    
+    .subtitle {
+      font-size: 0.55rem;
+    }
+    
+    .main-content {
+      padding: 0.4rem;
+    }
+    
+    .analysis-grid {
+      gap: 0.4rem;
+    }
+    
+    .video-section {
+      height: 45vh;
+      min-height: 280px;
+    }
+    
+    .step-section {
+      max-height: 50vh;
+    }
+    
+    .app-footer {
+      padding: 0.4rem;
+      font-size: 0.7rem;
+    }
+    
+    .alert {
+      font-size: 0.75rem;
+      padding: 0.5rem 2rem 0.5rem 0.75rem;
+    }
+    
+    .close-btn {
+      width: 24px;
+      height: 24px;
+      font-size: 1.1rem;
     }
   }
 </style>

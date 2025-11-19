@@ -10,486 +10,234 @@
 </script>
 
 <div class="step-container">
-  <h3>Risultati Analisi</h3>
+  <h3>Risultati</h3>
   
   {#if results}
     {#if mainFlow === 'baseline' || results.baselineCreated}
-      <!-- Risultati creazione baseline -->
+      <!-- Risultati baseline -->
       <div class="result-card success-card">
-        <div class="success-icon">✅</div>
-        <h4>Baseline Creata con Successo!</h4>
-        <p>Il modello di riferimento biomeccanico è stato creato dai 5 video ottimali.</p>
+        <div class="success-header">
+          <div class="success-icon">✅</div>
+          <div>
+            <h4>Baseline Creata</h4>
+            <p class="compact-desc">Modello di riferimento biomeccanico creato</p>
+          </div>
+        </div>
         
         {#if results.baselineRanges || results.details?.feature_ranges}
-          <div class="biomechanics-section baseline-section">
-            <h4>📊 Range Baseline Biomeccanici (dal backend)</h4>
-            <p class="baseline-description">
-              Questi sono i range (min-max) di riferimento della corsa ottimale, calcolati dal backend dall'analisi dei 5 video.
-            </p>
+          <div class="biomechanics-section">
+            <h4>📊 Range Baseline</h4>
             
-            {#if results.baselineRanges || results.details?.biomechanics}
-              {@const biomechRanges = results.baselineRanges || results.details?.biomechanics || {}}
-              
-              {#if biomechRanges.leftKneeAngle}
-              <div class="bio-metric">
-                <h5>🦵 Angolo Ginocchio Sinistro</h5>
-                <div class="range-display">
-                  <div class="range-bar">
-                    <span class="range-label">Min</span>
-                    <div class="range-visual">
-                      <div class="range-line"></div>
-                    </div>
-                    <span class="range-label">Max</span>
-                  </div>
-                  <div class="range-values">
-                    <span class="range-value min">{biomechRanges.leftKneeAngle.min}{biomechRanges.leftKneeAngle.unit || '°'}</span>
-                    <span class="range-separator">—</span>
-                    <span class="range-value max">{biomechRanges.leftKneeAngle.max}{biomechRanges.leftKneeAngle.unit || '°'}</span>
+            <div class="metrics-grid">
+              {#if results.baselineRanges || results.details?.biomechanics}
+                {@const biomechRanges = results.baselineRanges || results.details?.biomechanics || {}}
+                
+                {#if biomechRanges.leftKneeAngle}
+                <div class="metric-card compact">
+                  <h5>🦵 Ginocchio SX</h5>
+                  <div class="range-compact">
+                    <span class="val">{biomechRanges.leftKneeAngle.min}</span>
+                    <span class="sep">→</span>
+                    <span class="val">{biomechRanges.leftKneeAngle.max}</span>
+                    <span class="unit">{biomechRanges.leftKneeAngle.unit || '°'}</span>
                   </div>
                 </div>
-              </div>
-            {/if}
-            
-            {#if biomechRanges.rightKneeAngle}
-              <div class="bio-metric">
-                <h5>🦵 Angolo Ginocchio Destro</h5>
-                <div class="range-display">
-                  <div class="range-bar">
-                    <span class="range-label">Min</span>
-                    <div class="range-visual">
-                      <div class="range-line"></div>
-                    </div>
-                    <span class="range-label">Max</span>
-                  </div>
-                  <div class="range-values">
-                    <span class="range-value min">{biomechRanges.rightKneeAngle.min}{biomechRanges.rightKneeAngle.unit || '°'}</span>
-                    <span class="range-separator">—</span>
-                    <span class="range-value max">{biomechRanges.rightKneeAngle.max}{biomechRanges.rightKneeAngle.unit || '°'}</span>
+                {/if}
+                
+                {#if biomechRanges.rightKneeAngle}
+                <div class="metric-card compact">
+                  <h5>🦵 Ginocchio DX</h5>
+                  <div class="range-compact">
+                    <span class="val">{biomechRanges.rightKneeAngle.min}</span>
+                    <span class="sep">→</span>
+                    <span class="val">{biomechRanges.rightKneeAngle.max}</span>
+                    <span class="unit">{biomechRanges.rightKneeAngle.unit || '°'}</span>
                   </div>
                 </div>
-              </div>
-            {/if}
-            
-            {#if biomechRanges.pelvicDrop}
-              <div class="bio-metric">
-                <h5>⚖️ Caduta Pelvica</h5>
-                <div class="range-display">
-                  <div class="range-bar">
-                    <span class="range-label">Min</span>
-                    <div class="range-visual">
-                      <div class="range-line"></div>
-                    </div>
-                    <span class="range-label">Max</span>
-                  </div>
-                  <div class="range-values">
-                    <span class="range-value min">{biomechRanges.pelvicDrop.min}{biomechRanges.pelvicDrop.unit || '%'}</span>
-                    <span class="range-separator">—</span>
-                    <span class="range-value max">{biomechRanges.pelvicDrop.max}{biomechRanges.pelvicDrop.unit || '%'}</span>
+                {/if}
+                
+                {#if biomechRanges.pelvicDrop}
+                <div class="metric-card compact">
+                  <h5>⚖️ Caduta Pelvica</h5>
+                  <div class="range-compact">
+                    <span class="val">{biomechRanges.pelvicDrop.min}</span>
+                    <span class="sep">→</span>
+                    <span class="val">{biomechRanges.pelvicDrop.max}</span>
+                    <span class="unit">{biomechRanges.pelvicDrop.unit || '%'}</span>
                   </div>
                 </div>
-              </div>
-            {/if}
-            
-            {#if biomechRanges.trunkInclination}
-              <div class="bio-metric">
-                <h5>📐 Inclinazione Tronco</h5>
-                <div class="range-display">
-                  <div class="range-bar">
-                    <span class="range-label">Min</span>
-                    <div class="range-visual">
-                      <div class="range-line"></div>
-                    </div>
-                    <span class="range-label">Max</span>
-                  </div>
-                  <div class="range-values">
-                    <span class="range-value min">{biomechRanges.trunkInclination.min}{biomechRanges.trunkInclination.unit || '°'}</span>
-                    <span class="range-separator">—</span>
-                    <span class="range-value max">{biomechRanges.trunkInclination.max}{biomechRanges.trunkInclination.unit || '°'}</span>
+                {/if}
+                
+                {#if biomechRanges.trunkInclination}
+                <div class="metric-card compact">
+                  <h5>📐 Inclinazione</h5>
+                  <div class="range-compact">
+                    <span class="val">{biomechRanges.trunkInclination.min}</span>
+                    <span class="sep">→</span>
+                    <span class="val">{biomechRanges.trunkInclination.max}</span>
+                    <span class="unit">{biomechRanges.trunkInclination.unit || '°'}</span>
                   </div>
                 </div>
-              </div>
-              {/if}
-            {/if}
-            
-            {#if results.details?.feature_ranges || results.baselineRanges?.features}
-              {@const ranges = results.details?.feature_ranges || results.baselineRanges?.features || {}}
-              
-              {#if ranges.cpd}
-                <div class="bio-metric">
-                  <h5>⚖️ CPD (Caduta Pelvica Controlaterale)</h5>
-                  <div class="range-display">
-                    <div class="range-values">
-                      <span class="range-value min">{ranges.cpd.min}{ranges.cpd.unit || '°'}</span>
-                      <span class="range-separator">—</span>
-                      <span class="range-value max">{ranges.cpd.max}{ranges.cpd.unit || '°'}</span>
-                    </div>
-                  </div>
-                </div>
+                {/if}
               {/if}
               
-              {#if ranges.bos}
-                <div class="bio-metric">
-                  <h5>👣 Base d'Appoggio (BoS)</h5>
-                  <div class="range-display">
-                    <div class="range-values">
-                      <span class="range-value min">{ranges.bos.min}{ranges.bos.unit || 'm'}</span>
-                      <span class="range-separator">—</span>
-                      <span class="range-value max">{ranges.bos.max}{ranges.bos.unit || 'm'}</span>
-                    </div>
+              {#if results.details?.feature_ranges || results.baselineRanges?.features}
+                {@const ranges = results.details?.feature_ranges || results.baselineRanges?.features || {}}
+                
+                {#if ranges.cpd}
+                <div class="metric-card compact">
+                  <h5>⚖️ CPD</h5>
+                  <div class="range-compact">
+                    <span class="val">{ranges.cpd.min}</span>
+                    <span class="sep">→</span>
+                    <span class="val">{ranges.cpd.max}</span>
+                    <span class="unit">{ranges.cpd.unit || '°'}</span>
                   </div>
                 </div>
-              {/if}
-              
-              {#if ranges.eversion}
-                <div class="bio-metric">
-                  <h5>🦶 Eversione Retropiede</h5>
-                  <div class="range-display">
-                    <div class="range-values">
-                      <span class="range-value min">{ranges.eversion.min}{ranges.eversion.unit || '°'}</span>
-                      <span class="range-separator">—</span>
-                      <span class="range-value max">{ranges.eversion.max}{ranges.eversion.unit || '°'}</span>
-                    </div>
+                {/if}
+                
+                {#if ranges.bos}
+                <div class="metric-card compact">
+                  <h5>👣 BoS</h5>
+                  <div class="range-compact">
+                    <span class="val">{ranges.bos.min}</span>
+                    <span class="sep">→</span>
+                    <span class="val">{ranges.bos.max}</span>
+                    <span class="unit">{ranges.bos.unit || 'm'}</span>
                   </div>
                 </div>
-              {/if}
-              
-              {#if ranges.trunkLean}
-                <div class="bio-metric">
-                  <h5>📐 Inclinazione Tronco Laterale</h5>
-                  <div class="range-display">
-                    <div class="range-values">
-                      <span class="range-value min">{ranges.trunkLean.min}{ranges.trunkLean.unit || '°'}</span>
-                      <span class="range-separator">—</span>
-                      <span class="range-value max">{ranges.trunkLean.max}{ranges.trunkLean.unit || '°'}</span>
-                    </div>
+                {/if}
+                
+                {#if ranges.gct}
+                <div class="metric-card compact">
+                  <h5>🦶 GCT</h5>
+                  <div class="range-compact">
+                    <span class="val">{ranges.gct.min}</span>
+                    <span class="sep">→</span>
+                    <span class="val">{ranges.gct.max}</span>
+                    <span class="unit">{ranges.gct.unit || 'ms'}</span>
                   </div>
                 </div>
-              {/if}
-              
-              {#if ranges.gct}
-                <div class="bio-metric">
-                  <h5>🦶 Ground Contact Time (GCT)</h5>
-                  <div class="range-display">
-                    <div class="range-values">
-                      <span class="range-value min">{ranges.gct.min}{ranges.gct.unit || 'ms'}</span>
-                      <span class="range-separator">—</span>
-                      <span class="range-value max">{ranges.gct.max}{ranges.gct.unit || 'ms'}</span>
-                    </div>
-                  </div>
-                </div>
-              {/if}
-              
-              {#if ranges.cadence}
-                <div class="bio-metric">
+                {/if}
+                
+                {#if ranges.cadence}
+                <div class="metric-card compact">
                   <h5>🏃 Cadenza</h5>
-                  <div class="range-display">
-                    <div class="range-values">
-                      <span class="range-value min">{ranges.cadence.min}{ranges.cadence.unit || 'passi/min'}</span>
-                      <span class="range-separator">—</span>
-                      <span class="range-value max">{ranges.cadence.max}{ranges.cadence.unit || 'passi/min'}</span>
-                    </div>
+                  <div class="range-compact">
+                    <span class="val">{ranges.cadence.min}</span>
+                    <span class="sep">→</span>
+                    <span class="val">{ranges.cadence.max}</span>
+                    <span class="unit">{ranges.cadence.unit || 'spm'}</span>
                   </div>
                 </div>
+                {/if}
               {/if}
-            {/if}
+            </div>
           </div>
         {/if}
       </div>
       
     {:else}
-      <!-- Risultati analisi anomalia -->
-      <div class="result-card" style="border-left: 4px solid {results.anomaly_color}">
-        <div class="score-display">
-          <div class="score-label">Anomaly Score</div>
-          <div class="score-value" style="color: {results.anomaly_color}">
-            {results.anomaly_score?.toFixed(4)}
+      <!-- Risultati analisi -->
+      <div class="result-card" style="border-left: 3px solid {results.anomaly_color}">
+        <div class="score-compact">
+          <div>
+            <div class="score-label">Anomaly Score</div>
+            <div class="score-value" style="color: {results.anomaly_color}">
+              {results.anomaly_score?.toFixed(4)}
+            </div>
           </div>
-        </div>
-        
-        <div class="level-display">
           <div class="level-badge" style="background: {results.anomaly_color}">
             {results.anomaly_level}
           </div>
         </div>
         
-        <div class="interpretation">
-          <h4>Interpretazione</h4>
+        <div class="interpretation compact">
           {#if results.anomaly_level === 'Ottimale'}
-            <p>✓ Eccellente! La tua corsa è molto simile alla baseline ottimale.</p>
+            <p>✓ Eccellente! Corsa simile alla baseline.</p>
           {:else if results.anomaly_level === 'Buono'}
-            <p>✓ Buono! La tua corsa è in linea con la baseline, con piccole variazioni.</p>
+            <p>✓ Buono! In linea con la baseline.</p>
           {:else if results.anomaly_level === 'Moderato'}
-            <p>⚠ Moderato. Ci sono alcune differenze rispetto alla baseline ottimale.</p>
+            <p>⚠ Alcune differenze dalla baseline.</p>
           {:else if results.anomaly_level === 'Attenzione'}
-            <p>⚠ Attenzione! Deviazioni significative dal pattern biomeccanico ottimale.</p>
+            <p>⚠ Deviazioni significative.</p>
           {:else if results.anomaly_level === 'Critico'}
-            <p>🚨 Critico! Pattern molto diverso dalla baseline. Consulta un professionista.</p>
+            <p>🚨 Pattern molto diverso. Consulta professionista.</p>
           {:else}
-            <p>📊 Analisi completata. Livello: {results.anomaly_level || 'N/A'}</p>
+            <p>📊 Livello: {results.anomaly_level || 'N/A'}</p>
           {/if}
         </div>
         
         {#if results.feature_metrics}
-          <!-- Panoramica Spazio-Temporale (dati dal backend) -->
-          <div class="biomechanics-section">
-            <h4>⏱️ Panoramica Spazio-Temporale</h4>
-            
-            <div class="bio-metric">
-              <h5>🦶 Ground Contact Time (GCT)</h5>
-              <div class="metric-stats">
-                <div class="stat-item">
-                  <span class="stat-label">Media:</span>
-                  <span class="stat-value">{results.feature_metrics.gct?.mean || results.metrics_avg?.gct_mean || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Min:</span>
-                  <span class="stat-value">{results.feature_metrics.gct?.min || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Max:</span>
-                  <span class="stat-value">{results.feature_metrics.gct?.max || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Std:</span>
-                  <span class="stat-value">{results.feature_metrics.gct?.std || 'N/A'}</span>
-                </div>
+          <div class="metrics-grid">
+            <!-- Spazio-Temporale -->
+            <div class="metric-card">
+              <h5>🦶 GCT</h5>
+              <div class="stats-compact">
+                <span class="stat"><b>μ:</b> {results.feature_metrics.gct?.mean || 'N/A'}</span>
+                <span class="stat"><b>σ:</b> {results.feature_metrics.gct?.std || 'N/A'}</span>
               </div>
-              <p class="metric-description">Tempo di contatto al suolo per ciclo di falcata (ms)</p>
             </div>
             
-            <div class="bio-metric">
+            <div class="metric-card">
               <h5>🏃 Cadenza</h5>
-              <div class="metric-stats">
-                <div class="stat-item">
-                  <span class="stat-label">Media:</span>
-                  <span class="stat-value">{results.feature_metrics.cadence?.mean || results.metrics_avg?.cadence_mean || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Min:</span>
-                  <span class="stat-value">{results.feature_metrics.cadence?.min || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Max:</span>
-                  <span class="stat-value">{results.feature_metrics.cadence?.max || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Std:</span>
-                  <span class="stat-value">{results.feature_metrics.cadence?.std || 'N/A'}</span>
-                </div>
+              <div class="stats-compact">
+                <span class="stat"><b>μ:</b> {results.feature_metrics.cadence?.mean || 'N/A'}</span>
+                <span class="stat"><b>σ:</b> {results.feature_metrics.cadence?.std || 'N/A'}</span>
               </div>
-              <p class="metric-description">Numero di passi al minuto</p>
-            </div>
-          </div>
-          
-          <!-- Analisi Piano Frontale (dati dal backend) -->
-          <div class="biomechanics-section">
-            <h4>📐 Analisi Piano Frontale</h4>
-            
-            <div class="bio-metric">
-              <h5>⚖️ Caduta Pelvica Controlaterale (CPD)</h5>
-              <div class="metric-stats">
-                <div class="stat-item">
-                  <span class="stat-label">Media:</span>
-                  <span class="stat-value">{results.feature_metrics.cpd?.mean || results.metrics_avg?.cpd_mean || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Min:</span>
-                  <span class="stat-value">{results.feature_metrics.cpd?.min || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Max:</span>
-                  <span class="stat-value">{results.feature_metrics.cpd?.max || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Std:</span>
-                  <span class="stat-value">{results.feature_metrics.cpd?.std || 'N/A'}</span>
-                </div>
-              </div>
-              <p class="metric-description">Angolo della linea bi-iliaca rispetto all'orizzontale ({results.feature_metrics.cpd?.unit || '°'})</p>
             </div>
             
-            <div class="bio-metric">
-              <h5>👣 Base d'Appoggio (BoS)</h5>
-              <div class="metric-stats">
-                <div class="stat-item">
-                  <span class="stat-label">Media:</span>
-                  <span class="stat-value">{results.feature_metrics.bos?.mean || results.metrics_avg?.bos_mean || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Min:</span>
-                  <span class="stat-value">{results.feature_metrics.bos?.min || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Max:</span>
-                  <span class="stat-value">{results.feature_metrics.bos?.max || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Std:</span>
-                  <span class="stat-value">{results.feature_metrics.bos?.std || 'N/A'}</span>
-                </div>
+            <!-- Piano Frontale -->
+            <div class="metric-card">
+              <h5>⚖️ CPD</h5>
+              <div class="stats-compact">
+                <span class="stat"><b>μ:</b> {results.feature_metrics.cpd?.mean || 'N/A'}</span>
+                <span class="stat"><b>σ:</b> {results.feature_metrics.cpd?.std || 'N/A'}</span>
               </div>
-              <p class="metric-description">Distanza mediolaterale tra le caviglie ({results.feature_metrics.bos?.unit || 'm'})</p>
             </div>
             
-            <div class="bio-metric">
-              <h5>🦶 Eversione Retropiede</h5>
-              <div class="metric-stats">
-                <div class="stat-item">
-                  <span class="stat-label">Media:</span>
-                  <span class="stat-value">{results.feature_metrics.rearfoot_eversion?.mean || results.metrics_avg?.rearfoot_eversion_mean || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Min:</span>
-                  <span class="stat-value">{results.feature_metrics.rearfoot_eversion?.min || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Max:</span>
-                  <span class="stat-value">{results.feature_metrics.rearfoot_eversion?.max || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Std:</span>
-                  <span class="stat-value">{results.feature_metrics.rearfoot_eversion?.std || 'N/A'}</span>
-                </div>
+            <div class="metric-card">
+              <h5>👣 BoS</h5>
+              <div class="stats-compact">
+                <span class="stat"><b>μ:</b> {results.feature_metrics.bos?.mean || 'N/A'}</span>
+                <span class="stat"><b>σ:</b> {results.feature_metrics.bos?.std || 'N/A'}</span>
               </div>
-              <p class="metric-description">Angolo di eversione del retropiede ({results.feature_metrics.rearfoot_eversion?.unit || '°'})</p>
             </div>
             
-            <div class="bio-metric">
-              <h5>📐 Inclinazione Tronco Laterale</h5>
-              <div class="metric-stats">
-                <div class="stat-item">
-                  <span class="stat-label">Media:</span>
-                  <span class="stat-value">{results.feature_metrics.lateral_trunk_lean?.mean || results.metrics_avg?.lateral_trunk_lean_mean || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Min:</span>
-                  <span class="stat-value">{results.feature_metrics.lateral_trunk_lean?.min || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Max:</span>
-                  <span class="stat-value">{results.feature_metrics.lateral_trunk_lean?.max || 'N/A'}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Std:</span>
-                  <span class="stat-value">{results.feature_metrics.lateral_trunk_lean?.std || 'N/A'}</span>
-                </div>
+            <div class="metric-card">
+              <h5>🦶 Eversione</h5>
+              <div class="stats-compact">
+                <span class="stat"><b>μ:</b> {results.feature_metrics.rearfoot_eversion?.mean || 'N/A'}</span>
+                <span class="stat"><b>σ:</b> {results.feature_metrics.rearfoot_eversion?.std || 'N/A'}</span>
               </div>
-              <p class="metric-description">Inclinazione laterale del tronco ({results.feature_metrics.lateral_trunk_lean?.unit || '°'})</p>
-            </div>
-          </div>
-        {:else if results.metrics_avg}
-          <!-- Fallback: usa metrics_avg se feature_metrics non disponibile (compatibilità) -->
-          <div class="biomechanics-section">
-            <h4>⏱️ Panoramica Spazio-Temporale</h4>
-            
-            <div class="bio-metric">
-              <h5>🦶 Ground Contact Time (GCT) Medio</h5>
-              <div class="metric-value">
-                <span class="value">{results.metrics_avg.gct_mean}</span>
-                <span class="unit">ms</span>
-              </div>
-              <p class="metric-description">Tempo medio di contatto al suolo per ciclo di falcata</p>
             </div>
             
-            <div class="bio-metric">
-              <h5>🏃 Cadenza Media</h5>
-              <div class="metric-value">
-                <span class="value">{results.metrics_avg.cadence_mean}</span>
-                <span class="unit">passi/min</span>
+            <div class="metric-card">
+              <h5>📐 Tronco</h5>
+              <div class="stats-compact">
+                <span class="stat"><b>μ:</b> {results.feature_metrics.lateral_trunk_lean?.mean || 'N/A'}</span>
+                <span class="stat"><b>σ:</b> {results.feature_metrics.lateral_trunk_lean?.std || 'N/A'}</span>
               </div>
-              <p class="metric-description">Numero medio di passi al minuto</p>
-            </div>
-          </div>
-          
-          <div class="biomechanics-section">
-            <h4>📐 Analisi Piano Frontale</h4>
-            
-            <div class="bio-metric">
-              <h5>⚖️ Caduta Pelvica Media (CPD)</h5>
-              <div class="metric-value">
-                <span class="value">{results.metrics_avg.cpd_mean}</span>
-                <span class="unit">°</span>
-              </div>
-              <p class="metric-description">Angolo della linea bi-iliaca rispetto all'orizzontale</p>
-            </div>
-            
-            <div class="bio-metric">
-              <h5>👣 Base d'Appoggio Media (BoS)</h5>
-              <div class="metric-value">
-                <span class="value">{results.metrics_avg.bos_mean}</span>
-                <span class="unit">m</span>
-              </div>
-              <p class="metric-description">Distanza mediolaterale tra le caviglie durante l'appoggio</p>
-            </div>
-            
-            <div class="bio-metric">
-              <h5>🦶 Eversione Retropiede Media</h5>
-              <div class="metric-value">
-                <span class="value">{results.metrics_avg.rearfoot_eversion_mean}</span>
-                <span class="unit">°</span>
-              </div>
-              <p class="metric-description">Angolo di eversione del retropiede (caviglia-tallone-punta piede)</p>
-            </div>
-            
-            <div class="bio-metric">
-              <h5>📐 Inclinazione Tronco Media</h5>
-              <div class="metric-value">
-                <span class="value">{results.metrics_avg.lateral_trunk_lean_mean}</span>
-                <span class="unit">°</span>
-              </div>
-              <p class="metric-description">Inclinazione laterale del tronco rispetto alla verticale</p>
             </div>
           </div>
         {/if}
         
         {#if results.metrics_stability}
-          <!-- Stabilità (Variabilità) -->
-          <div class="biomechanics-section stability-section">
-            <h4>📊 Stabilità (Variabilità)</h4>
-            <p class="section-description">Coefficiente di Variazione (CV) - Indica la variabilità stride-to-stride. Valori elevati possono indicare affaticamento o instabilità.</p>
-            
-            <div class="bio-metric">
-              <h5>🦶 Variabilità GCT</h5>
-              <div class="metric-value">
-                <span class="value">{results.metrics_stability.gct_cv}</span>
-                <span class="unit">%</span>
-              </div>
-              <p class="metric-description">Coefficiente di variazione del Ground Contact Time</p>
-            </div>
-            
-            <div class="bio-metric">
-              <h5>⏱️ Variabilità Tempo Falcata</h5>
-              <div class="metric-value">
-                <span class="value">{results.metrics_stability.stride_time_cv}</span>
-                <span class="unit">%</span>
-              </div>
-              <p class="metric-description">Coefficiente di variazione del tempo di falcata</p>
+          <div class="section-compact">
+            <h4>📊 Stabilità (CV%)</h4>
+            <div class="inline-stats">
+              <span>GCT: <b>{results.metrics_stability.gct_cv}</b></span>
+              <span>Stride: <b>{results.metrics_stability.stride_time_cv}</b></span>
             </div>
           </div>
         {/if}
         
         {#if results.metrics_asymmetry}
-          <!-- Simmetria (Asimmetria) -->
-          <div class="biomechanics-section asymmetry-section">
-            <h4>⚖️ Simmetria (Asimmetria)</h4>
-            <p class="section-description">Indici di asimmetria bilaterale. Valori elevati indicano differenze significative tra lato sinistro e destro.</p>
-            
-            <div class="bio-metric">
-              <h5>🦶 Asimmetria GCT</h5>
-              <div class="metric-value">
-                <span class="value">{results.metrics_asymmetry.gct_si}</span>
-                <span class="unit">%</span>
-              </div>
-              <p class="metric-description">Symmetry Index del Ground Contact Time (differenza sinistra/destra)</p>
-            </div>
-            
-            <div class="bio-metric">
-              <h5>⚖️ Asimmetria CPD</h5>
-              <div class="metric-value">
-                <span class="value">{results.metrics_asymmetry.cpd_sa}</span>
-                <span class="unit">%</span>
-              </div>
-              <p class="metric-description">Symmetry Angle della Caduta Pelvica Controlaterale</p>
+          <div class="section-compact">
+            <h4>⚖️ Asimmetria</h4>
+            <div class="inline-stats">
+              <span>GCT SI: <b>{results.metrics_asymmetry.gct_si}%</b></span>
+              <span>CPD SA: <b>{results.metrics_asymmetry.cpd_sa}%</b></span>
             </div>
           </div>
         {/if}
@@ -502,135 +250,202 @@
     
   {:else}
     <div class="no-results">
-      <p>Nessun risultato disponibile</p>
+      <p>Nessun risultato</p>
     </div>
   {/if}
 </div>
 
 <style>
   .step-container {
-    padding: 0.5rem 0;
+    padding: 1rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
   }
   
   h3 {
     font-size: 1.2rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     color: var(--text-light);
   }
   
   h4 {
-    font-size: 1rem;
+    font-size: 0.95rem;
     margin-bottom: 0.5rem;
     color: var(--text-light);
   }
   
   h5 {
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-    color: var(--text-light);
+    font-size: 0.8rem;
+    margin: 0 0 0.25rem 0;
+    color: var(--text-muted);
+    font-weight: 600;
   }
   
   .result-card {
     background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-  }
-  
-  .success-card {
-    border-left: 4px solid var(--success-color);
-  }
-  
-  .success-icon {
-    font-size: 3rem;
-    text-align: center;
+    border-radius: 10px;
+    padding: 1rem;
     margin-bottom: 0.75rem;
   }
   
-  .score-display {
-    text-align: center;
-    margin-bottom: 1.25rem;
+  .success-card {
+    border-left: 3px solid var(--success-color);
+  }
+  
+  .success-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  
+  .success-icon {
+    font-size: 2rem;
+  }
+  
+  .compact-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  
+  .score-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
   }
   
   .score-label {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.25rem;
   }
   
   .score-value {
-    font-size: 2.75rem;
+    font-size: 2rem;
     font-weight: 700;
-  }
-  
-  .level-display {
-    text-align: center;
-    margin-bottom: 1.25rem;
+    line-height: 1;
   }
   
   .level-badge {
-    display: inline-block;
-    padding: 0.6rem 1.5rem;
-    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    border-radius: 16px;
     font-weight: 600;
     color: white;
-    font-size: 1rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
   }
   
   .interpretation {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
   }
   
-  .interpretation p {
-    line-height: 1.5;
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 0.9rem;
+  .interpretation.compact p {
+    font-size: 0.85rem;
+    line-height: 1.4;
     margin: 0;
   }
   
-  .details-section {
+  .biomechanics-section {
+    margin-top: 1rem;
+  }
+  
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .metric-card {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 0.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .metric-card.compact {
+    padding: 0.5rem;
+  }
+  
+  .range-compact {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+  }
+  
+  .range-compact .val {
+    color: var(--success-color);
+    font-weight: 700;
+  }
+  
+  .range-compact .sep {
+    color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .range-compact .unit {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+  }
+  
+  .stats-compact {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  
+  .stat {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  
+  .stat b {
+    color: var(--accent-primary);
+    font-weight: 700;
+  }
+  
+  .section-compact {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    padding: 1rem;
+    padding: 0.6rem;
+    margin-top: 0.75rem;
   }
   
-  .detail-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  .section-compact h4 {
     font-size: 0.85rem;
+    margin-bottom: 0.4rem;
   }
   
-  .detail-item:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
+  .inline-stats {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--text-muted);
   }
   
-  .label {
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.7);
-  }
-  
-  .value {
-    color: var(--text-light);
-    font-weight: 600;
+  .inline-stats b {
+    color: var(--accent-primary);
   }
   
   .btn-restart {
     width: 100%;
-    background: var(--accent-color);
+    background: var(--accent-primary);
     color: white;
     border: none;
-    padding: 0.85rem;
-    font-size: 1rem;
+    padding: 0.75rem;
+    font-size: 0.9rem;
     font-weight: 600;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
+    margin-top: auto;
   }
   
   .btn-restart:hover {
@@ -640,182 +455,51 @@
   
   .no-results {
     text-align: center;
-    padding: 2rem;
+    padding: 1.5rem;
     color: rgba(255, 255, 255, 0.5);
-    font-size: 0.9rem;
-  }
-  
-  .biomechanics-section {
-    margin-top: 1.5rem;
-    padding: 1rem;
-    background: rgba(52, 152, 219, 0.05);
-    border-radius: 8px;
-    border: 1px solid rgba(52, 152, 219, 0.2);
-  }
-  
-  .baseline-section {
-    background: rgba(46, 204, 113, 0.05);
-    border-color: rgba(46, 204, 113, 0.3);
-  }
-  
-  .baseline-description {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 1rem;
-    font-style: italic;
-  }
-  
-  .biomechanics-section h4 {
-    margin: 0 0 1rem 0;
-    color: var(--accent-color);
-    font-size: 1.1rem;
-  }
-  
-  .bio-metric {
-    margin-bottom: 1rem;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 6px;
-  }
-  
-  .bio-metric:last-child {
-    margin-bottom: 0;
-  }
-  
-  .bio-metric h5 {
-    margin: 0 0 0.5rem 0;
-    color: var(--text-light);
-    font-size: 0.95rem;
-    font-weight: 600;
-  }
-  
-  .metric-stats {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-  }
-  
-  .stat-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.4rem 0.6rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-  }
-  
-  .stat-label {
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-  
-  .stat-value {
-    font-weight: 600;
-    color: var(--success-color);
     font-size: 0.85rem;
   }
   
-  /* Range display per baseline */
-  .range-display {
-    padding: 0.75rem;
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .metrics-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .score-compact {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .inline-stats {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
   }
   
-  .range-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-  }
-  
-  .range-label {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: uppercase;
-    font-weight: 700;
-  }
-  
-  .range-visual {
-    flex: 1;
-    height: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  
-  .range-line {
-    height: 100%;
-    background: linear-gradient(90deg, var(--success-color), var(--accent-color));
-    border-radius: 4px;
-  }
-  
-  .range-values {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    font-size: 1.1rem;
-  }
-  
-  .range-value {
-    font-weight: 700;
-    color: var(--success-color);
-  }
-  
-  .range-value.min {
-    color: var(--success-color);
-  }
-  
-  .range-value.max {
-    color: var(--accent-color);
-  }
-  
-  .range-separator {
-    color: rgba(255, 255, 255, 0.3);
-    font-weight: 300;
-  }
-  
-  /* Stili per le nuove metriche biomeccaniche */
-  .metric-value {
-    display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .metric-value .value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--accent-color);
-  }
-  
-  .metric-value .unit {
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.6);
-    font-weight: 500;
-  }
-  
-  .metric-description {
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.6);
-    margin: 0;
-    font-style: italic;
-  }
-  
-  .section-description {
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 1rem;
-    padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    font-style: italic;
-  }
-  
-  .stability-section {
-    border-left: 3px solid #3498db;
-  }
-  
-  .asymmetry-section {
-    border-left: 3px solid #9b59b6;
+  @media (max-width: 576px) {
+    .step-container {
+      padding: 0.75rem;
+    }
+    
+    h3 {
+      font-size: 1.1rem;
+    }
+    
+    .result-card {
+      padding: 0.75rem;
+    }
+    
+    .score-value {
+      font-size: 1.75rem;
+    }
+    
+    .metric-card {
+      padding: 0.5rem;
+    }
+    
+    .success-icon {
+      font-size: 1.75rem;
+    }
   }
 </style>
-

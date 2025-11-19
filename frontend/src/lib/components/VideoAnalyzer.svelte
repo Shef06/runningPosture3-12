@@ -536,6 +536,11 @@ const LANDMARKS = {
         
         analysisStore.setMessage('✅ Analisi completata con successo!');
         console.log('✅ Analisi completata:', data);
+        
+        // Call the completion callback if provided
+        if (onAnalysisComplete) {
+          onAnalysisComplete();
+        }
     } else {
         const errorMsg = data.message || 'Errore nell\'analisi';
         analysisStore.setError(errorMsg);
