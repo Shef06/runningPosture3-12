@@ -3,9 +3,16 @@
   
   $: results = $analysisStore.results;
   $: mainFlow = $analysisStore.mainFlow;
-  
+
   function restartAnalysis() {
     analysisStore.reset();
+  }
+
+  // Funzione helper per formattare i numeri in modo compatto
+  function formatVal(val, decimals = 2) {
+    if (val === null || val === undefined) return 'N/A';
+    if (typeof val !== 'number') return val;
+    return Number(val.toFixed(decimals));
   }
 </script>
 
@@ -14,7 +21,6 @@
   
   {#if results}
     {#if mainFlow === 'baseline' || results.baselineCreated}
-      <!-- Risultati baseline -->
       <div class="result-card success-card">
         <div class="success-header">
           <div class="success-icon">✅</div>
@@ -36,9 +42,9 @@
                 <div class="metric-card compact">
                   <h5>🦵 Ginocchio SX</h5>
                   <div class="range-compact">
-                    <span class="val">{biomechRanges.leftKneeAngle.min}</span>
+                    <span class="val">{formatVal(biomechRanges.leftKneeAngle.min)}</span>
                     <span class="sep">→</span>
-                    <span class="val">{biomechRanges.leftKneeAngle.max}</span>
+                    <span class="val">{formatVal(biomechRanges.leftKneeAngle.max)}</span>
                     <span class="unit">{biomechRanges.leftKneeAngle.unit || '°'}</span>
                   </div>
                 </div>
@@ -48,9 +54,9 @@
                 <div class="metric-card compact">
                   <h5>🦵 Ginocchio DX</h5>
                   <div class="range-compact">
-                    <span class="val">{biomechRanges.rightKneeAngle.min}</span>
+                    <span class="val">{formatVal(biomechRanges.rightKneeAngle.min)}</span>
                     <span class="sep">→</span>
-                    <span class="val">{biomechRanges.rightKneeAngle.max}</span>
+                    <span class="val">{formatVal(biomechRanges.rightKneeAngle.max)}</span>
                     <span class="unit">{biomechRanges.rightKneeAngle.unit || '°'}</span>
                   </div>
                 </div>
@@ -60,9 +66,9 @@
                 <div class="metric-card compact">
                   <h5>⚖️ Caduta Pelvica</h5>
                   <div class="range-compact">
-                    <span class="val">{biomechRanges.pelvicDrop.min}</span>
+                    <span class="val">{formatVal(biomechRanges.pelvicDrop.min)}</span>
                     <span class="sep">→</span>
-                    <span class="val">{biomechRanges.pelvicDrop.max}</span>
+                    <span class="val">{formatVal(biomechRanges.pelvicDrop.max)}</span>
                     <span class="unit">{biomechRanges.pelvicDrop.unit || '%'}</span>
                   </div>
                 </div>
@@ -72,9 +78,9 @@
                 <div class="metric-card compact">
                   <h5>📐 Inclinazione</h5>
                   <div class="range-compact">
-                    <span class="val">{biomechRanges.trunkInclination.min}</span>
+                    <span class="val">{formatVal(biomechRanges.trunkInclination.min)}</span>
                     <span class="sep">→</span>
-                    <span class="val">{biomechRanges.trunkInclination.max}</span>
+                    <span class="val">{formatVal(biomechRanges.trunkInclination.max)}</span>
                     <span class="unit">{biomechRanges.trunkInclination.unit || '°'}</span>
                   </div>
                 </div>
@@ -88,9 +94,9 @@
                 <div class="metric-card compact">
                   <h5>⚖️ CPD</h5>
                   <div class="range-compact">
-                    <span class="val">{ranges.cpd.min}</span>
+                    <span class="val">{formatVal(ranges.cpd.min)}</span>
                     <span class="sep">→</span>
-                    <span class="val">{ranges.cpd.max}</span>
+                    <span class="val">{formatVal(ranges.cpd.max)}</span>
                     <span class="unit">{ranges.cpd.unit || '°'}</span>
                   </div>
                 </div>
@@ -100,9 +106,9 @@
                 <div class="metric-card compact">
                   <h5>👣 BoS</h5>
                   <div class="range-compact">
-                    <span class="val">{ranges.bos.min}</span>
+                    <span class="val">{formatVal(ranges.bos.min, 3)}</span>
                     <span class="sep">→</span>
-                    <span class="val">{ranges.bos.max}</span>
+                    <span class="val">{formatVal(ranges.bos.max, 3)}</span>
                     <span class="unit">{ranges.bos.unit || 'm'}</span>
                   </div>
                 </div>
@@ -112,9 +118,9 @@
                 <div class="metric-card compact">
                   <h5>🦶 GCT</h5>
                   <div class="range-compact">
-                    <span class="val">{ranges.gct.min}</span>
+                    <span class="val">{formatVal(ranges.gct.min, 0)}</span>
                     <span class="sep">→</span>
-                    <span class="val">{ranges.gct.max}</span>
+                    <span class="val">{formatVal(ranges.gct.max, 0)}</span>
                     <span class="unit">{ranges.gct.unit || 'ms'}</span>
                   </div>
                 </div>
@@ -124,9 +130,9 @@
                 <div class="metric-card compact">
                   <h5>🏃 Cadenza</h5>
                   <div class="range-compact">
-                    <span class="val">{ranges.cadence.min}</span>
+                    <span class="val">{formatVal(ranges.cadence.min, 0)}</span>
                     <span class="sep">→</span>
-                    <span class="val">{ranges.cadence.max}</span>
+                    <span class="val">{formatVal(ranges.cadence.max, 0)}</span>
                     <span class="unit">{ranges.cadence.unit || 'spm'}</span>
                   </div>
                 </div>
@@ -138,13 +144,12 @@
       </div>
       
     {:else}
-      <!-- Risultati analisi -->
       <div class="result-card" style="border-left: 3px solid {results.anomaly_color}">
         <div class="score-compact">
           <div>
             <div class="score-label">Anomaly Score</div>
             <div class="score-value" style="color: {results.anomaly_color}">
-              {results.anomaly_score?.toFixed(4)}
+              {formatVal(results.anomaly_score, 4)}
             </div>
           </div>
           <div class="level-badge" style="background: {results.anomaly_color}">
@@ -170,53 +175,51 @@
         
         {#if results.feature_metrics}
           <div class="metrics-grid">
-            <!-- Spazio-Temporale -->
             <div class="metric-card">
               <h5>🦶 GCT</h5>
               <div class="stats-compact">
-                <span class="stat"><b>μ:</b> {results.feature_metrics.gct?.mean || 'N/A'}</span>
-                <span class="stat"><b>σ:</b> {results.feature_metrics.gct?.std || 'N/A'}</span>
+                <span class="stat"><b>μ:</b> {formatVal(results.feature_metrics.gct?.mean, 0)}</span>
+                <span class="stat"><b>σ:</b> {formatVal(results.feature_metrics.gct?.std, 1)}</span>
               </div>
             </div>
             
             <div class="metric-card">
               <h5>🏃 Cadenza</h5>
               <div class="stats-compact">
-                <span class="stat"><b>μ:</b> {results.feature_metrics.cadence?.mean || 'N/A'}</span>
-                <span class="stat"><b>σ:</b> {results.feature_metrics.cadence?.std || 'N/A'}</span>
+                <span class="stat"><b>μ:</b> {formatVal(results.feature_metrics.cadence?.mean, 0)}</span>
+                <span class="stat"><b>σ:</b> {formatVal(results.feature_metrics.cadence?.std, 1)}</span>
               </div>
             </div>
             
-            <!-- Piano Frontale -->
             <div class="metric-card">
               <h5>⚖️ CPD</h5>
               <div class="stats-compact">
-                <span class="stat"><b>μ:</b> {results.feature_metrics.cpd?.mean || 'N/A'}</span>
-                <span class="stat"><b>σ:</b> {results.feature_metrics.cpd?.std || 'N/A'}</span>
+                <span class="stat"><b>μ:</b> {formatVal(results.feature_metrics.cpd?.mean)}</span>
+                <span class="stat"><b>σ:</b> {formatVal(results.feature_metrics.cpd?.std)}</span>
               </div>
             </div>
             
             <div class="metric-card">
               <h5>👣 BoS</h5>
               <div class="stats-compact">
-                <span class="stat"><b>μ:</b> {results.feature_metrics.bos?.mean || 'N/A'}</span>
-                <span class="stat"><b>σ:</b> {results.feature_metrics.bos?.std || 'N/A'}</span>
+                <span class="stat"><b>μ:</b> {formatVal(results.feature_metrics.bos?.mean, 3)}</span>
+                <span class="stat"><b>σ:</b> {formatVal(results.feature_metrics.bos?.std, 3)}</span>
               </div>
             </div>
             
             <div class="metric-card">
               <h5>🦶 Eversione</h5>
               <div class="stats-compact">
-                <span class="stat"><b>μ:</b> {results.feature_metrics.rearfoot_eversion?.mean || 'N/A'}</span>
-                <span class="stat"><b>σ:</b> {results.feature_metrics.rearfoot_eversion?.std || 'N/A'}</span>
+                <span class="stat"><b>μ:</b> {formatVal(results.feature_metrics.rearfoot_eversion?.mean)}</span>
+                <span class="stat"><b>σ:</b> {formatVal(results.feature_metrics.rearfoot_eversion?.std)}</span>
               </div>
             </div>
             
             <div class="metric-card">
               <h5>📐 Tronco</h5>
               <div class="stats-compact">
-                <span class="stat"><b>μ:</b> {results.feature_metrics.lateral_trunk_lean?.mean || 'N/A'}</span>
-                <span class="stat"><b>σ:</b> {results.feature_metrics.lateral_trunk_lean?.std || 'N/A'}</span>
+                <span class="stat"><b>μ:</b> {formatVal(results.feature_metrics.lateral_trunk_lean?.mean)}</span>
+                <span class="stat"><b>σ:</b> {formatVal(results.feature_metrics.lateral_trunk_lean?.std)}</span>
               </div>
             </div>
           </div>
@@ -226,8 +229,8 @@
           <div class="section-compact">
             <h4>📊 Stabilità (CV%)</h4>
             <div class="inline-stats">
-              <span>GCT: <b>{results.metrics_stability.gct_cv}</b></span>
-              <span>Stride: <b>{results.metrics_stability.stride_time_cv}</b></span>
+              <span>GCT: <b>{formatVal(results.metrics_stability.gct_cv)}%</b></span>
+              <span>Stride: <b>{formatVal(results.metrics_stability.stride_time_cv)}%</b></span>
             </div>
           </div>
         {/if}
@@ -236,8 +239,8 @@
           <div class="section-compact">
             <h4>⚖️ Asimmetria</h4>
             <div class="inline-stats">
-              <span>GCT SI: <b>{results.metrics_asymmetry.gct_si}%</b></span>
-              <span>CPD SA: <b>{results.metrics_asymmetry.cpd_sa}%</b></span>
+              <span>GCT SI: <b>{formatVal(results.metrics_asymmetry.gct_si)}%</b></span>
+              <span>CPD SA: <b>{formatVal(results.metrics_asymmetry.cpd_sa)}%</b></span>
             </div>
           </div>
         {/if}
@@ -287,6 +290,8 @@
     border-radius: 10px;
     padding: 1rem;
     margin-bottom: 0.75rem;
+    max-width: 100%;
+    overflow-wrap: break-word;
   }
   
   .success-card {
@@ -316,6 +321,7 @@
     align-items: center;
     margin-bottom: 0.75rem;
     gap: 1rem;
+    flex-wrap: wrap;
   }
   
   .score-label {
@@ -328,6 +334,7 @@
     font-size: 2rem;
     font-weight: 700;
     line-height: 1;
+    word-break: break-all;
   }
   
   .level-badge {
@@ -358,8 +365,9 @@
   
   .metrics-grid {
     display: grid;
+    /* MODIFICATO: Forza sempre 2 colonne esatte */
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
+    gap: 1rem; /* Spazio leggermente aumentato per chiarezza */
   }
   
   .metric-card {
@@ -367,6 +375,7 @@
     border-radius: 8px;
     padding: 0.6rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 0; 
   }
   
   .metric-card.compact {
@@ -378,11 +387,13 @@
     align-items: baseline;
     gap: 0.4rem;
     font-size: 0.9rem;
+    flex-wrap: wrap;
   }
   
   .range-compact .val {
     color: var(--success-color);
     font-weight: 700;
+    white-space: nowrap;
   }
   
   .range-compact .sep {
@@ -403,6 +414,7 @@
   .stat {
     font-size: 0.8rem;
     color: var(--text-muted);
+    white-space: nowrap;
   }
   
   .stat b {
@@ -446,6 +458,10 @@
     cursor: pointer;
     transition: all 0.3s ease;
     margin-top: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
   }
   
   .btn-restart:hover {
@@ -460,46 +476,10 @@
     font-size: 0.85rem;
   }
   
-  /* RESPONSIVE */
-  @media (max-width: 768px) {
+  /* Manteniamo un fallback per schermi piccolissimi */
+  @media (max-width: 360px) {
     .metrics-grid {
       grid-template-columns: 1fr;
-    }
-    
-    .score-compact {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    
-    .inline-stats {
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-  }
-  
-  @media (max-width: 576px) {
-    .step-container {
-      padding: 0.75rem;
-    }
-    
-    h3 {
-      font-size: 1.1rem;
-    }
-    
-    .result-card {
-      padding: 0.75rem;
-    }
-    
-    .score-value {
-      font-size: 1.75rem;
-    }
-    
-    .metric-card {
-      padding: 0.5rem;
-    }
-    
-    .success-icon {
-      font-size: 1.75rem;
     }
   }
 </style>

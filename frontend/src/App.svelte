@@ -104,12 +104,15 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    /* FIX SOVRAPPOSIZIONE */
+    gap: 1.5rem; 
   }
   
   .logo-section {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    min-width: 0; /* Permette al testo di restringersi se necessario */
   }
   
   .logo-icon {
@@ -123,6 +126,7 @@
     backdrop-filter: blur(10px);
     border-radius: 10px;
     border: 1px solid rgba(148, 163, 184, 0.18);
+    flex-shrink: 0;
   }
   
   .logo-text h1 {
@@ -134,6 +138,7 @@
     background-clip: text;
     margin: 0;
     letter-spacing: -0.03em;
+    white-space: nowrap; /* Mantiene il titolo su una riga */
   }
   
   .subtitle {
@@ -141,11 +146,14 @@
     font-size: 0.7rem;
     margin: 0;
     font-weight: 500;
+    white-space: nowrap;
   }
   
   .header-badges {
     display: flex;
     gap: 0.5rem;
+    /* FIX SOVRAPPOSIZIONE: impedisce ai badge di schiacciarsi */
+    flex-shrink: 0; 
   }
   
   .badge {
@@ -183,14 +191,8 @@
   }
   
   @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   
   .alert-error {
@@ -298,6 +300,7 @@
       max-height: 50vh;
     }
     
+    /* Nasconde i badge su tablet se lo spazio è poco, opzionale */
     .header-badges {
       display: none;
     }

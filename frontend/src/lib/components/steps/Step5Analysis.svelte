@@ -5,8 +5,6 @@
   $: recordedBlob = $analysisStore.recordedBlob;
   $: speed = $analysisStore.speed;
   $: fps = $analysisStore.fps;
-  $: height = $analysisStore.height;
-  $: mass = $analysisStore.mass;
   $: loading = $analysisStore.loading;
   $: isRecording = $analysisStore.isRecording;
   
@@ -36,14 +34,13 @@
         formData.append('videos', file);
         formData.append('videos', file);
         formData.append('videos', file);
-        formData.append('speed', speed);
+        if (speed) formData.append('speed', speed);
         formData.append('fps', fps);
         
         const response = await fetch('http://localhost:5000/api/create_baseline', {
           method: 'POST',
           body: formData
         });
-        
         const data = await response.json();
         
         if (data.status === 'success') {
@@ -75,16 +72,13 @@
       } else {
         // Analisi video
         formData.append('video', file);
-        formData.append('speed', speed);
+        if (speed) formData.append('speed', speed);
         formData.append('fps', fps);
-        formData.append('height', height);
-        formData.append('mass', mass);
         
         const response = await fetch('http://localhost:5000/api/detect_anomaly', {
           method: 'POST',
           body: formData
         });
-        
         const data = await response.json();
         
         if (data.status === 'success') {
@@ -123,7 +117,6 @@
   </p>
   
   {#if !recordedBlob}
-    <!-- Controlli registrazione -->
     <div class="recording-controls">
       <h4>Registrazione Video</h4>
       <p class="hint">La registrazione apparirà nel video holder</p>
@@ -139,7 +132,6 @@
       {/if}
     </div>
   {:else}
-    <!-- Video registrato - mostra riepilogo -->
     <div class="info-summary">
       <h4>Video Registrato ✅</h4>
       <div class="param-list">
@@ -150,14 +142,6 @@
         <div class="param-item">
           <span class="label">FPS:</span>
           <span class="value">{fps} fps</span>
-        </div>
-        <div class="param-item">
-          <span class="label">Altezza:</span>
-          <span class="value">{height} cm</span>
-        </div>
-        <div class="param-item">
-          <span class="label">Massa:</span>
-          <span class="value">{mass} kg</span>
         </div>
       </div>
     </div>
@@ -183,43 +167,7 @@
 <style>
   @import './steps-common.css';
   
-  .step-container {
-    padding: 0.5rem 0;
-  }
-  
-  h3 {
-    font-size: 1.2rem;
-    margin-bottom: 0.5rem;
-    color: var(--text-light);
-  }
-  
-  h4 {
-    font-size: 1rem;
-    margin-bottom: 0.75rem;
-    color: var(--text-light);
-  }
-  
-  .step-description {
-    color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 1rem;
-    line-height: 1.4;
-    font-size: 0.9rem;
-  }
-  
-  .recording-controls {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 1.5rem;
-    text-align: center;
-    margin-bottom: 1rem;
-  }
-  
-  .hint {
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 1.5rem;
-    font-size: 0.85rem;
-  }
-  
+  /* FIX Pulsanti Registrazione */
   .btn-record {
     width: 100%;
     background: var(--error-color);
@@ -231,6 +179,11 @@
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
+    /* Flex Centering */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
   }
   
   .btn-record:hover {
@@ -249,11 +202,30 @@
     border-radius: 8px;
     cursor: pointer;
     animation: pulse 1.5s infinite;
+    /* Flex Centering */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
   }
   
   @keyframes pulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.01); }
+  }
+  
+  .recording-controls {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  
+  .hint {
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
   }
   
   .info-summary {
@@ -264,12 +236,23 @@
     margin-bottom: 1rem;
   }
   
-  .btn-primary {
-    background: var(--success-color);
+  .param-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
   
-  .btn-primary:hover:not(:disabled) {
-    background: #27ae60;
+  .param-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+  }
+  
+  .param-item .label { color: rgba(255,255,255,0.7); }
+  .param-item .value { font-weight: 600; color: white; }
+  
+  .loading-state {
+    text-align: center;
+    padding: 2rem;
   }
 </style>
-

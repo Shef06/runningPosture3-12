@@ -4,8 +4,6 @@
   let fileInput;
   let speed = null; // km/h - obbligatorio
   let fps = null; // obbligatorio
-  let height = 180;
-  let mass = 70;
   let dragOver = false;
   
   $: baselineVideos = $analysisStore.baselineVideos;
@@ -49,7 +47,6 @@
   
   function continueToAnalysis() {
     if (!canContinue) return;
-    
     // Valida parametri obbligatori
     if (!speed || speed <= 0) {
       alert('Inserisci la velocità del tapis roulant (km/h)');
@@ -61,7 +58,7 @@
       return;
     }
     
-    analysisStore.setCalibration(speed, fps, height, mass);
+    analysisStore.setCalibration(speed, fps);
     analysisStore.nextStep();
   }
   
@@ -73,7 +70,8 @@
 <div class="step-container">
   <h3>Carica 5 Video Baseline</h3>
   <p class="step-description">
-    Seleziona 5 video della tua corsa ottimale registrati da <strong>vista posteriore</strong>. Questi video verranno utilizzati per creare il modello di riferimento.
+    Seleziona 5 video della tua corsa ottimale registrati da <strong>vista posteriore</strong>.
+    Questi video verranno utilizzati per creare il modello di riferimento.
   </p>
   
   <div class="instruction-box">
@@ -87,7 +85,6 @@
     </ul>
   </div>
   
-  <!-- Progress Indicator -->
   <div class="progress-indicator" class:complete={canContinue}>
     <div class="progress-bar">
       <div class="progress-fill" style="width: {(videosCount / 5) * 100}%"></div>
@@ -95,7 +92,6 @@
     <span class="progress-text">{videosCount} / 5 video caricati</span>
   </div>
   
-  <!-- Upload Area -->
   {#if videosCount < 5}
     <div 
       class="upload-area" 
@@ -110,10 +106,10 @@
         accept="video/*" 
         multiple
         on:change={handleFileSelect}
-        id="video-upload"
+        id="baseline-video-upload"
         style="display: none;"
       />
-      <label for="video-upload" class="upload-label">
+      <label for="baseline-video-upload" class="upload-label">
         <div class="upload-icon">📹</div>
         <div class="upload-text">
           <strong>Clicca per selezionare</strong> o trascina i video qui
@@ -125,7 +121,6 @@
     </div>
   {/if}
   
-  <!-- Video List -->
   {#if videosCount > 0}
     <div class="video-list">
       {#each baselineVideos as video, index}
@@ -145,14 +140,16 @@
             on:click={() => removeVideo(index)}
             title="Rimuovi video"
           >
-            ×
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
       {/each}
     </div>
   {/if}
   
-  <!-- Calibration Form (solo quando 5 video sono caricati) -->
   {#if canContinue}
     <div class="calibration-section">
       <h4>Parametri Calibrazione</h4>
@@ -187,32 +184,6 @@
           />
           <span class="unit">fps</span>
         </div>
-        
-        <div class="form-group">
-          <label for="height">Altezza:</label>
-          <input 
-            type="number" 
-            id="height" 
-            bind:value={height} 
-            min="100" 
-            max="250" 
-            step="1"
-          />
-          <span class="unit">cm</span>
-        </div>
-        
-        <div class="form-group">
-          <label for="mass">Massa:</label>
-          <input 
-            type="number" 
-            id="mass" 
-            bind:value={mass} 
-            min="30" 
-            max="200" 
-            step="1"
-          />
-          <span class="unit">kg</span>
-        </div>
       </div>
     </div>
   {/if}
@@ -232,7 +203,7 @@
 
 <style>
   @import './steps-common.css';
-  
+
   .progress-indicator {
     margin-bottom: 1.5rem;
   }
@@ -247,7 +218,7 @@
   
   .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent-color), var(--success-color));
+    background: linear-gradient(90deg, var(--accent-primary), var(--success-color));
     transition: width 0.3s ease;
   }
   
@@ -266,7 +237,7 @@
   .upload-area {
     margin-bottom: 1rem;
     border: 2px dashed rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
+    border-radius: 12px;
     background: rgba(52, 152, 219, 0.05);
     transition: all 0.3s ease;
   }
@@ -311,20 +282,6 @@
     padding-right: 0.5rem;
   }
   
-  .video-list::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  .video-list::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 3px;
-  }
-  
-  .video-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-  }
-  
   .video-card {
     display: flex;
     align-items: center;
@@ -338,19 +295,13 @@
   }
   
   @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateX(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
   }
   
   .video-card:hover {
     background: rgba(0, 0, 0, 0.4);
-    border-color: var(--accent-color);
+    border-color: var(--accent-primary);
   }
   
   .video-number {
@@ -359,10 +310,11 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    background: var(--accent-color);
+    background: var(--accent-primary);
     border-radius: 50%;
     font-weight: 700;
     font-size: 0.95rem;
+    color: white;
     flex-shrink: 0;
   }
   
@@ -404,14 +356,12 @@
   .remove-btn {
     width: 32px;
     height: 32px;
-    background: var(--error-color);
-    border: none;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.5);
     border-radius: 50%;
-    color: white;
-    font-size: 1.5rem;
-    line-height: 1;
+    color: #fca5a5;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     flex-shrink: 0;
     padding: 0;
     display: flex;
@@ -420,42 +370,30 @@
   }
   
   .remove-btn:hover {
-    background: #c0392b;
-    transform: rotate(90deg);
+    background: rgba(239, 68, 68, 0.4);
+    color: white;
+    transform: scale(1.1);
   }
   
   .required {
-    color: #e74c3c;
+    color: var(--error-color);
   }
   
   input[type="number"]:invalid {
-    border-color: #e74c3c;
+    border-color: var(--error-color);
   }
   
   .calibration-section {
-    background: rgba(46, 204, 113, 0.1);
+    background: rgba(52, 211, 153, 0.05);
     border: 1px solid var(--success-color);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
     animation: slideIn 0.3s ease;
   }
   
   .calibration-section h4 {
     color: var(--success-color);
-    margin-bottom: 0.75rem;
-  }
-  
-  .btn-primary {
-    background: var(--success-color);
-  }
-  
-  .btn-primary:hover:not(:disabled) {
-    background: #27ae60;
-  }
-  
-  .btn-primary:disabled {
-    background: rgba(255, 255, 255, 0.2);
+    margin-bottom: 1rem;
   }
 </style>
-

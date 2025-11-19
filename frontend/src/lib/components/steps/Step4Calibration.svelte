@@ -2,11 +2,10 @@
   import { analysisStore } from '../../stores/analysisStore.js';
   
   let fps = 30;
-  let height = 180;
-  let mass = 70;
   
   function continueToAnalysis() {
-    analysisStore.setCalibration(fps, height, mass);
+    // Passo null per speed, e fps come secondo argomento
+    analysisStore.setCalibration(null, fps);
     analysisStore.nextStep();
   }
 </script>
@@ -14,7 +13,7 @@
 <div class="step-container">
   <h3>Calibrazione Parametri</h3>
   <p class="step-description">
-    Inserisci i parametri dell'atleta per l'analisi biomeccanica.
+    Inserisci i parametri della videocamera per l'analisi.
   </p>
   
   <div class="calibration-form">
@@ -29,35 +28,7 @@
         step="1"
       />
       <span class="unit">fps</span>
-      <p class="hint">Frame per secondo del video registrato</p>
-    </div>
-    
-    <div class="form-group">
-      <label for="height">Altezza Atleta:</label>
-      <input 
-        type="number" 
-        id="height" 
-        bind:value={height} 
-        min="100" 
-        max="250" 
-        step="1"
-      />
-      <span class="unit">cm</span>
-      <p class="hint">Altezza dell'atleta in centimetri</p>
-    </div>
-    
-    <div class="form-group">
-      <label for="mass">Massa Atleta:</label>
-      <input 
-        type="number" 
-        id="mass" 
-        bind:value={mass} 
-        min="30" 
-        max="200" 
-        step="1"
-      />
-      <span class="unit">kg</span>
-      <p class="hint">Massa corporea dell'atleta</p>
+      <p class="hint">Frame per secondo della registrazione</p>
     </div>
   </div>
   
@@ -68,7 +39,6 @@
 
 <style>
   @import './steps-common.css';
-  
   .btn-primary {
     background: var(--error-color);
   }
@@ -85,4 +55,3 @@
     font-size: 1.05rem;
   }
 </style>
-

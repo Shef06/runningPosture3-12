@@ -44,6 +44,10 @@
   }
   
   function goBack() {
+    if (videoMethod === 'upload' && currentStep === 6) {
+      analysisStore.goToStep(4);
+      return;
+    }
     analysisStore.prevStep();
   }
   
@@ -75,7 +79,7 @@
   <div class="step-header">
     <div class="header-left">
       <h2>Configurazione</h2>
-      <p class="step-subtitle">Passaggio {stepInfo.current} di {stepInfo.total}</p>
+      <p class="step-subtitle">Step {stepInfo.current} / {stepInfo.total}</p>
     </div>
     <div class="header-right">
       {#if currentStep > 1}
@@ -87,7 +91,9 @@
   </div>
   
   <div class="step-content">
-    <svelte:component this={getStepComponent()} />
+    <div class="step-wrapper">
+      <svelte:component this={getStepComponent()} />
+    </div>
     
     {#if showBaselineLoading || showAnalysisLoading}
       <div class="loading-overlay">
@@ -95,7 +101,7 @@
           <div class="loading-spinner"></div>
           {#if mainFlow === 'baseline'}
             <h3>Creazione Baseline</h3>
-            <p>Elaborazione dei 5 video e calcolo del modello...</p>
+            <p>Elaborazione dei 5 video in corso...</p>
             <div class="loading-steps">
               <div class="loading-step">Estrazione keypoint 3D</div>
               <div class="loading-step">Calcolo angoli</div>
@@ -128,94 +134,123 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    /* Il background è gestito dal parent */
+    overflow: hidden;
   }
   
   .step-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    /* AUMENTATO: Padding orizzontale allineato a step-container (2.5rem) */
-    padding: 1.5rem 2.5rem; 
+    padding: 1.25rem 1.5rem;
     border-bottom: 1px solid var(--border-color);
-    background: rgba(15, 23, 42, 0.5); /* Leggermente più scuro */
-    backdrop-filter: blur(10px);
+    background: rgba(15, 23, 42, 0.4);
+    flex-shrink: 0;
   }
   
   .header-left h2 {
     font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 0.1em; /* Spaziatura lettere più ampia */
-    color: #64748b; /* Colore più spento per l'etichetta */
-    margin-bottom: 0.4rem;
-    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
   }
   
   .step-subtitle {
     font-size: 1.1rem;
     color: var(--text-main);
-    font-weight: 700;
+    font-weight: 600;
     margin: 0;
   }
   
   .btn-back {
-    background: rgba(255,255,255,0.03);
+    background: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-muted);
-    padding: 0.6rem 1rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 600;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
     transition: all 0.2s;
     cursor: pointer;
   }
   
   .btn-back:hover {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
     color: white;
-    border-color: rgba(255,255,255,0.4);
-    transform: translateX(-2px);
+    border-color: rgba(255,255,255,0.3);
   }
   
+  /* MODIFICA: Step Content diventa un contenitore Flex */
   .step-content {
     flex: 1;
     overflow-y: auto;
     padding: 0; 
     position: relative;
-    scrollbar-gutter: stable;
+    /* Flex per centrare verticalmente il wrapper interno */
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* NUOVO: Wrapper interno per gestire larghezza e margini automatici */
+  .step-wrapper {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    /* Questo centra verticalmente il contenuto se c'è spazio extra */
+    justify-content: center; 
+    /* Padding inferiore extra per evitare taglio ombre */
+    padding-bottom: 2rem;
+  }
+  
+  .step-content::-webkit-scrollbar {
+    width: 6px;
+  }
+  .step-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .step-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  .step-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
   
   .step-footer {
-    /* AUMENTATO: Padding allineato */
-    padding: 1.5rem 2.5rem;
+    padding: 1rem 1.5rem;
     border-top: 1px solid var(--border-color);
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(15, 23, 42, 0.4);
+    flex-shrink: 0;
   }
   
   .btn-restart {
     background: transparent;
     width: 100%;
-    border: 1px dashed rgba(255,255,255,0.2);
+    border: 1px dashed var(--border-color);
     color: var(--text-muted);
-    padding: 1rem;
-    border-radius: 12px;
-    font-size: 0.95rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
   }
   
   .btn-restart:hover {
     border-color: var(--text-muted);
     color: var(--text-main);
-    background: rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.02);
   }
   
   /* Loading Overlay */
   .loading-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(15, 23, 42, 0.9); /* Più scuro */
-    backdrop-filter: blur(12px); /* Più sfocato */
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(12px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -229,7 +264,6 @@
     padding: 3rem;
   }
   
-  /* ... resto delle animazioni loading identico a prima ... */
   .loading-spinner {
     width: 50px;
     height: 50px;

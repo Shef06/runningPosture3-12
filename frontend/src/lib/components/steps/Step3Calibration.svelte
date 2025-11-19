@@ -4,8 +4,6 @@
   let fileInput;
   let speed = null; // km/h - obbligatorio
   let fps = null; // obbligatorio
-  let height = 180;
-  let mass = 70;
   
   $: mainFlow = $analysisStore.mainFlow;
   $: videoFile = $analysisStore.videoFile;
@@ -19,7 +17,6 @@
   
   function continueToAnalysis() {
     if (!videoFile) return;
-    
     // Valida parametri obbligatori
     if (!speed || speed <= 0) {
       alert('Inserisci la velocità del tapis roulant (km/h)');
@@ -31,7 +28,7 @@
       return;
     }
     
-    analysisStore.setCalibration(speed, fps, height, mass);
+    analysisStore.setCalibration(speed, fps);
     analysisStore.nextStep();
   }
 </script>
@@ -53,26 +50,30 @@
     </ul>
   </div>
   
-  <!-- Upload Video -->
-  <div class="upload-section">
+  <div class="upload-area">
     <input 
       type="file" 
       bind:this={fileInput}
       accept="video/*" 
       on:change={handleFileSelect}
-      id="video-upload"
+      id="analysis-video-upload"
       style="display: none;"
     />
-    <label for="video-upload" class="upload-label">
+    <label for="analysis-video-upload" class="upload-label">
       {#if videoFile}
-        ✅ {videoFile.name}
+        <div class="file-selected">
+          <span class="icon">✅</span>
+          <span class="filename">{videoFile.name}</span>
+        </div>
       {:else}
-        📁 Clicca per selezionare video
+        <div class="upload-placeholder">
+          <span class="icon">📁</span>
+          <span>Clicca per selezionare video</span>
+        </div>
       {/if}
     </label>
   </div>
   
-  <!-- Parametri Calibrazione -->
   <div class="calibration-form">
     <h4>Parametri Calibrazione</h4>
     
@@ -105,32 +106,6 @@
       />
       <span class="unit">fps</span>
     </div>
-    
-    <div class="form-group">
-      <label for="height">Altezza:</label>
-      <input 
-        type="number" 
-        id="height" 
-        bind:value={height} 
-        min="100" 
-        max="250" 
-        step="1"
-      />
-      <span class="unit">cm</span>
-    </div>
-    
-    <div class="form-group">
-      <label for="mass">Massa:</label>
-      <input 
-        type="number" 
-        id="mass" 
-        bind:value={mass} 
-        min="30" 
-        max="200" 
-        step="1"
-      />
-      <span class="unit">kg</span>
-    </div>
   </div>
   
   <button 
@@ -148,33 +123,54 @@
 
 <style>
   @import './steps-common.css';
-  
-  .btn-primary {
-    background: var(--success-color);
+
+  /* Stili specifici per l'area di upload singolo */
+  .upload-label {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 2rem;
+    cursor: pointer;
   }
-  
-  .btn-primary:hover:not(:disabled) {
-    background: #27ae60;
+
+  .upload-placeholder, .file-selected {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 1.1rem;
+    color: var(--text-main);
   }
-  
+
+  .icon {
+    font-size: 1.5rem;
+  }
+
+  .filename {
+    font-weight: 600;
+    color: var(--success-color);
+    word-break: break-all;
+  }
+
   .required {
-    color: #e74c3c;
+    color: var(--error-color);
   }
   
   input[type="number"]:invalid {
-    border-color: #e74c3c;
+    border-color: var(--error-color);
   }
   
   .instruction-box {
-    background: rgba(52, 152, 219, 0.1);
-    border: 1px solid rgba(52, 152, 219, 0.3);
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
     border-radius: 8px;
     padding: 1rem;
     margin-bottom: 1.5rem;
   }
   
   .instruction-box h4 {
-    color: var(--accent-color);
+    color: #60a5fa;
     margin-bottom: 0.5rem;
     font-size: 0.95rem;
   }
@@ -196,5 +192,20 @@
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.8);
   }
-</style>
 
+  .calibration-form {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .calibration-form h4 {
+    margin-bottom: 1.5rem; 
+    color: var(--accent-primary);
+    font-size: 1.1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+  }
+</style>

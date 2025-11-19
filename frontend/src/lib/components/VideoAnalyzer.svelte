@@ -11,22 +11,22 @@
   let pose;
   let animationFrame;
   let isProcessing = false;
-  
-const LANDMARKS = {
-  LEFT_SHOULDER: 11,
-  RIGHT_SHOULDER: 12,
-  LEFT_HIP: 23,
-  RIGHT_HIP: 24,
-  LEFT_KNEE: 25,
-  RIGHT_KNEE: 26,
-  LEFT_ANKLE: 27,
-  RIGHT_ANKLE: 28,
-  LEFT_HEEL: 29,
-  RIGHT_HEEL: 30,
-  LEFT_FOOT_INDEX: 31,
-  RIGHT_FOOT_INDEX: 32
-};
-  
+
+  const LANDMARKS = {
+    LEFT_SHOULDER: 11,
+    RIGHT_SHOULDER: 12,
+    LEFT_HIP: 23,
+    RIGHT_HIP: 24,
+    LEFT_KNEE: 25,
+    RIGHT_KNEE: 26,
+    LEFT_ANKLE: 27,
+    RIGHT_ANKLE: 28,
+    LEFT_HEEL: 29,
+    RIGHT_HEEL: 30,
+    LEFT_FOOT_INDEX: 31,
+    RIGHT_FOOT_INDEX: 32
+  };
+
   // Dati raccolti durante l'analisi
   let collectedFrames = [];
   let frameCount = 0;
@@ -54,7 +54,7 @@ const LANDMARKS = {
       }
     }
   });
-  
+
   // Auto-start: invia video al backend quando isAnalyzing diventa true
   $: if (isAnalyzing && videoFile && !isProcessing && speed && fps) {
     // Usa setTimeout per evitare problemi di reattività
@@ -65,15 +65,10 @@ const LANDMARKS = {
     }, 100);
   }
   
-  // Auto-stop quando isAnalyzing diventa false (non più necessario per backend)
-  // $: if (!isAnalyzing && isProcessing) {
-  //   stopAnalysis();
-  // }
-  
   onDestroy(() => {
     cleanup();
   });
-  
+
   async function initializeMediaPipe() {
     try {
       // Carica MediaPipe dinamicamente da CDN se non già disponibile
@@ -105,10 +100,10 @@ const LANDMARKS = {
         
         checkMediaPipe();
       });
-      
+
       // Usa MediaPipe da window (caricato da CDN)
       const Pose = window.Pose;
-      
+
       // Carica drawing utils se non disponibili
       if (!window.drawConnectors || !window.drawLandmarks) {
         await loadDrawingUtilsFromCDN();
@@ -127,7 +122,7 @@ const LANDMARKS = {
       if (drawConnectors) window.drawConnectors = drawConnectors;
       if (drawLandmarks) window.drawLandmarks = drawLandmarks;
       if (POSE_CONNECTIONS) window.POSE_CONNECTIONS = POSE_CONNECTIONS;
-      
+
       // Verifica che Pose sia disponibile
       if (!Pose || typeof Pose !== 'function') {
         throw new Error('Pose non è disponibile come costruttore');
@@ -139,7 +134,7 @@ const LANDMARKS = {
           return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
         }
       });
-      
+
       pose.setOptions({
         modelComplexity: 1,
         smoothLandmarks: true,
@@ -148,7 +143,7 @@ const LANDMARKS = {
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
       });
-      
+
       pose.onResults(onPoseResults);
       
       console.log('✅ MediaPipe Pose inizializzato');
@@ -211,20 +206,19 @@ const LANDMARKS = {
   
   function onPoseResults(results) {
     if (!canvasElement || !canvasCtx || !videoElement) return;
-    
+
     // Pulisci il canvas
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    
+
     // Disegna lo scheletro se ci sono landmark
     if (results.poseLandmarks) {
       // Raccogli i dati per l'analisi finale
       frameCount++;
-      
       if (results.poseLandmarks) {
         // Calcola metriche biomeccaniche principali
         const metrics = calculateBiomechanicalMetrics(results.poseLandmarks);
-        
+
         collectedFrames.push({
           frameNumber: frameCount,
           timestamp: videoElement?.currentTime || 0,
@@ -235,11 +229,9 @@ const LANDMARKS = {
       }
       
       // Aggiorna le dimensioni del canvas ad ogni frame
-      // (per gestire resize dinamici durante la riproduzione)
       updateCanvasDimensions();
-      
+
       // Disegna le connessioni (le "ossa" dello scheletro)
-      // MediaPipe scalerà automaticamente le coordinate normalizzate al canvas
       if (window.drawConnectors && window.POSE_CONNECTIONS) {
         window.drawConnectors(
           canvasCtx,
@@ -274,12 +266,12 @@ const LANDMARKS = {
     
     const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
     const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
-    
+
     const cpdAngle = Math.atan2(
       rightHip.y - leftHip.y,
       Math.abs(rightHip.x - leftHip.x) + 1e-6
     ) * 180 / Math.PI;
-    
+
     const shoulderMidpoint = {
       x: (leftShoulder.x + rightShoulder.x) / 2,
       y: (leftShoulder.y + rightShoulder.y) / 2
@@ -288,12 +280,11 @@ const LANDMARKS = {
       x: (leftHip.x + rightHip.x) / 2,
       y: (leftHip.y + rightHip.y) / 2
     };
-    
     const trunkAngle = Math.atan2(
       shoulderMidpoint.x - hipMidpoint.x,
       shoulderMidpoint.y - hipMidpoint.y
     ) * 180 / Math.PI;
-    
+
     const bos = Math.abs(rightAnkle.x - leftAnkle.x);
     
     const eversionLeft = calculateRearfootEversion(landmarks, 'left');
@@ -310,7 +301,7 @@ const LANDMARKS = {
       landmarks[LANDMARKS.RIGHT_HEEL]?.y ?? landmarks[LANDMARKS.RIGHT_ANKLE].y,
       landmarks[LANDMARKS.RIGHT_FOOT_INDEX]?.y ?? landmarks[LANDMARKS.RIGHT_ANKLE].y
     );
-    
+
     return {
       angles: {
       leftKneeAngle,
@@ -358,10 +349,8 @@ const LANDMARKS = {
       x: footIndex.x - ankle.x,
       y: footIndex.y - ankle.y
     };
-    
     const heelMagnitude = Math.hypot(vectorHeel.x, vectorHeel.y);
     const footMagnitude = Math.hypot(vectorFoot.x, vectorFoot.y);
-    
     if (heelMagnitude === 0 || footMagnitude === 0) {
       return 0;
     }
@@ -369,7 +358,6 @@ const LANDMARKS = {
     const dotProduct = vectorHeel.x * vectorFoot.x + vectorHeel.y * vectorFoot.y;
     const cosAngle = Math.min(1, Math.max(-1, dotProduct / (heelMagnitude * footMagnitude)));
     let angle = Math.acos(cosAngle) * 180 / Math.PI;
-    
     const cross = vectorHeel.x * vectorFoot.y - vectorHeel.y * vectorFoot.x;
     if (cross < 0) {
       angle = -angle;
@@ -386,7 +374,6 @@ const LANDMARKS = {
     try {
       // Invia il frame corrente a MediaPipe
       await pose.send({ image: videoElement });
-      
       // Continua a processare il prossimo frame
       animationFrame = requestAnimationFrame(processFrame);
     } catch (error) {
@@ -396,16 +383,13 @@ const LANDMARKS = {
   
   function updateCanvasDimensions() {
     if (!canvasElement || !videoElement) return;
-    
     // Calcola le dimensioni effettive del video visualizzato
-    // (considerando object-fit: contain)
     const containerRect = videoElement.parentElement.getBoundingClientRect();
     const videoWidth = videoElement.videoWidth;
     const videoHeight = videoElement.videoHeight;
     
     if (videoWidth === 0 || videoHeight === 0) return;
     
-    // Calcola le dimensioni visualizzate effettive del video
     const containerAspect = containerRect.width / containerRect.height;
     const videoAspect = videoWidth / videoHeight;
     
@@ -433,7 +417,6 @@ const LANDMARKS = {
     canvasElement.style.height = displayHeight + 'px';
     canvasElement.style.left = offsetX + 'px';
     canvasElement.style.top = offsetY + 'px';
-    
     if (!canvasCtx) {
       canvasCtx = canvasElement.getContext('2d');
     }
@@ -467,7 +450,7 @@ const LANDMARKS = {
     // Valida e converte parametri obbligatori
     const speedNum = typeof speed === 'string' ? parseFloat(speed) : speed;
     const fpsNum = typeof fps === 'string' ? parseFloat(fps) : fps;
-    
+
     if (!speedNum || isNaN(speedNum) || speedNum <= 0) {
       analysisStore.setError('Velocità del tapis roulant (speed) è obbligatoria e deve essere un numero valido');
       return;
@@ -483,6 +466,19 @@ const LANDMARKS = {
     analysisStore.clearMessages();
     isProcessing = true;
     
+    // *** AVVIO RIPRODUZIONE LOCALE CON SCHELETRO ***
+    if (videoElement && pose) {
+      console.log('▶️ Avvio playback locale con scheletro...');
+      // Assicuriamoci che il video sia all'inizio
+      videoElement.currentTime = 0;
+      videoElement.muted = true; // Autoplay richiede mute spesso
+      
+      videoElement.play().then(() => {
+        processFrame();
+      }).catch(err => console.warn('Autoplay bloccato o errore:', err));
+    }
+    // *************************************************
+
     try {
       console.log('📤 Invio video al backend per analisi...');
       console.log('📊 Parametri:', { speed: speedNum, fps: fpsNum, videoFile: videoFile?.name });
@@ -493,12 +489,12 @@ const LANDMARKS = {
       formData.append('fps', fpsNum.toString());
       if (height) formData.append('height', height.toString());
       if (mass) formData.append('mass', mass.toString());
-      
+
       const response = await fetch('http://localhost:5000/api/detect_anomaly', {
         method: 'POST',
         body: formData
       });
-      
+
       if (!response.ok) {
         // Prova a leggere il messaggio di errore dal backend
         let errorMessage = `HTTP error! status: ${response.status}`;
@@ -513,11 +509,10 @@ const LANDMARKS = {
       }
       
       const data = await response.json();
-      
+
       if (data.status === 'success') {
         // Salva i risultati completi nello store
         analysisStore.setResults(data);
-        
         // Salva feature ranges se disponibili (dal backend, per analisi future)
         if (data.feature_ranges) {
           const frontendRanges = {
@@ -536,12 +531,7 @@ const LANDMARKS = {
         
         analysisStore.setMessage('✅ Analisi completata con successo!');
         console.log('✅ Analisi completata:', data);
-        
-        // Call the completion callback if provided
-        if (onAnalysisComplete) {
-          onAnalysisComplete();
-        }
-    } else {
+      } else {
         const errorMsg = data.message || 'Errore nell\'analisi';
         analysisStore.setError(errorMsg);
       }
@@ -559,11 +549,17 @@ const LANDMARKS = {
       isProcessing = false;
       analysisStore.setAnalyzing(false);
       analysisStore.setLoading(false);
+
+      // Ferma la riproduzione locale e il tracking
+      if (videoElement && !videoElement.paused) {
+        videoElement.pause();
+      }
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+      }
     }
   }
-  
-  // Funzione rimossa: startAnalysis() - ora tutto viene gestito dal backend
-  // MediaPipe può essere mantenuto solo per visualizzazione opzionale dello scheletro
   
   function stopAnalysis() {
     analysisStore.setAnalyzing(false);
@@ -584,38 +580,7 @@ const LANDMARKS = {
   function handleVideoEnded() {
     console.log('✅ Video terminato (preview)');
     // Nota: L'analisi completa viene gestita dal backend tramite sendVideoToBackend()
-    // Questa funzione viene chiamata solo se il video viene riprodotto per preview
   }
-  
-  // ============================================================================
-  // NOTA IMPORTANTE: TUTTI I CALCOLI SONO STATI SPOSTATI NEL BACKEND
-  // ============================================================================
-  // Il frontend non calcola più nulla. Tutti i calcoli (statistiche, anomaly score,
-  // livelli, colori, ecc.) vengono eseguiti dal backend e restituiti già pronti.
-  // 
-  // Le funzioni di calcolo sono state rimosse:
-  // - calculateFinalResults() -> Backend restituisce risultati completi
-  // - calculateStats() -> Backend calcola statistiche
-  // - calculateWeightedAnomalyScore() -> Backend calcola anomaly score
-  // - getAnomalyLevel() -> Backend restituisce livello già calcolato
-  // - getAnomalyColor() -> Backend restituisce colore già calcolato
-  // - computeNormalizedDeviation() -> Backend calcola deviazioni
-  // - calculateTemporalMetrics() -> Backend calcola metriche temporali
-  // ============================================================================
-  
-  // Funzione rimossa: calculateFinalResults()
-  // Funzione rimossa: convertScoreToEquivalentError()
-  // Funzione rimossa: getAnomalyLevel()
-  // Funzione rimossa: getAnomalyColor()
-  // Funzione rimossa: calculateStats()
-  // Funzione rimossa: computeNormalizedDeviation()
-  // Funzione rimossa: normalizeBaselineFeatureRanges()
-  // Funzione rimossa: calculateTemporalMetrics()
-  // Funzione rimossa: detectContactDurations()
-  // Funzione rimossa: smoothSeries()
-  // 
-  // TUTTE queste funzioni sono state spostate nel backend.
-  // Il frontend riceve i risultati già calcolati dal backend tramite API.
   
   function cleanup() {
     if (animationFrame) {
@@ -630,10 +595,6 @@ const LANDMARKS = {
       window.removeEventListener('resize', handleResize);
     }
   }
-  
-  // Esporta le funzioni per il controllo esterno
-  // Export rimosso: startAnalysis non esiste più (ora tutto gestito dal backend)
-  // export { startAnalysis, stopAnalysis };
 </script>
 
 <div class="video-analyzer">
@@ -739,4 +700,3 @@ const LANDMARKS = {
     }
   }
 </style>
-

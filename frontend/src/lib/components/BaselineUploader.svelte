@@ -1,7 +1,7 @@
 <script>
   import { analysisStore } from '../stores/analysisStore.js';
   import { onDestroy } from 'svelte';
-  
+
   // Usa i video dallo store invece di input file
   $: baselineVideos = $analysisStore.baselineVideos;
   $: speed = $analysisStore.speed;
@@ -18,7 +18,6 @@
   // Auto-start quando i video sono pronti e isAnalyzing è true
   $: isAnalyzing = $analysisStore.isAnalyzing;
   $: if (isAnalyzing && baselineVideos.length === 5 && !loading && speed && fps) {
-    // Usa setTimeout per evitare problemi di reattività
     setTimeout(() => {
       if (!loading) {
         createBaseline();
@@ -28,11 +27,9 @@
   
   // Simula progress durante l'elaborazione
   let progressInterval = null;
-  
   function startProgressSimulation() {
     currentVideoProgress = 0;
     progressPercent = 0;
-    
     // Simula progress: ogni video rappresenta 20% (100% / 5 video)
     progressInterval = setInterval(() => {
       if (currentVideoProgress < 5) {
@@ -67,7 +64,7 @@
   onDestroy(() => {
     stopProgressSimulation();
   });
-  
+
   async function createBaseline() {
     if (baselineVideos.length !== 5) {
       message = 'Sono richiesti esattamente 5 video per creare la baseline';
@@ -106,7 +103,6 @@
       baselineVideos.forEach(file => {
         formData.append('videos', file);
       });
-      
       // Aggiungi parametri di calibrazione
       formData.append('speed', speed);
       formData.append('fps', fps);
@@ -117,7 +113,6 @@
         method: 'POST',
         body: formData
       });
-      
       const data = await response.json();
       
       if (data.status === 'success') {
@@ -142,7 +137,6 @@
           details: data.details,
           timestamp: new Date().toISOString()
         };
-        
         analysisStore.setResults(results);
         
         // Salva E_max e thresholds se disponibili
@@ -193,7 +187,7 @@
   }
 </script>
 
-<div class="uploader-card">
+<div class="uploader-container">
   <div class="processing-display">
     <div class="processing-icon">⚙️</div>
     <h3>Creazione Baseline in Corso</h3>
@@ -205,30 +199,20 @@
       <div class="progress-section">
         <div class="progress-info">
           <span class="pulse-dot"></span>
-          <span>Analisi Baseline: Video {currentVideoProgress + 1} di {baselineVideos.length}</span>
+          <span>Analisi: Video {currentVideoProgress + 1} di {baselineVideos.length}</span>
         </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: {progressPercent}%"></div>
+        
+        <div class="progress-track">
+          <div class="progress-line" style="width: {progressPercent}%"></div>
         </div>
+        
         <div class="progress-text">
           {Math.round(progressPercent)}% completato
         </div>
       </div>
     {/if}
     
-    {#if baselineVideos.length > 0}
-      <div class="video-list">
-        <p class="video-list-title">Video caricati:</p>
-        {#each baselineVideos as file, i}
-          <div class="file-item">
-            <span class="file-number">{i + 1}</span>
-            <span class="file-name">{file.name}</span>
-            <span class="file-size">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-          </div>
-        {/each}
-      </div>
-    {/if}
-  </div>
+    </div>
   
   {#if message}
     <div class="alert {messageType}">
@@ -238,159 +222,73 @@
 </div>
 
 <style>
-  .uploader-card {
-    background: var(--secondary-bg);
-    border-radius: var(--border-radius);
-    padding: 2rem;
-    box-shadow: var(--box-shadow);
-  }
-  
-  h2 {
-    color: var(--text-light);
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .description {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 0.95rem;
-    line-height: 1.5;
-    margin-bottom: 1.5rem;
-  }
-  
-  .upload-area {
-    position: relative;
-    margin-bottom: 1.5rem;
-  }
-  
-  input[type="file"] {
-    display: none;
-  }
-  
-  .upload-label {
-    display: block;
-    padding: 3rem 2rem;
-    background: rgba(52, 152, 219, 0.1);
-    border: 2px dashed var(--accent-color);
-    border-radius: 8px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 1.1rem;
-  }
-  
-  .upload-label:hover {
-    background: rgba(52, 152, 219, 0.2);
-    border-color: #5dade2;
-  }
-  
-  .file-list {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .file-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
-  }
-  
-  .file-item:last-child {
-    margin-bottom: 0;
-  }
-  
-  .file-number {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: var(--accent-color);
-    border-radius: 50%;
-    font-weight: 600;
-    font-size: 0.9rem;
-  }
-  
-  .file-name {
-    flex: 1;
-    font-size: 0.95rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  .file-size {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.85rem;
-  }
-  
-  .processing-display {
-    flex: 1;
+  .uploader-container {
+    /* Full size per riempire il VideoHolder */
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(52, 152, 219, 0.1) 100%);
-    border-radius: 12px;
-    padding: 3rem;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+    padding: 2rem;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+  }
+  
+  .processing-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    min-height: 0;
+    max-width: 600px;
+    width: 100%;
   }
   
   .processing-icon {
     font-size: 4rem;
     margin-bottom: 1.5rem;
-    animation: rotate 2s linear infinite;
+    animation: rotate 4s linear infinite;
   }
   
   @keyframes rotate {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
   
   .processing-display h3 {
     margin: 0 0 1rem 0;
     color: var(--text-light);
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
   }
   
   .processing-description {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 1rem;
-    max-width: 500px;
+    color: var(--text-muted);
+    font-size: 1.1rem;
     line-height: 1.6;
-    margin: 0 0 2rem 0;
+    margin: 0 0 3rem 0;
   }
   
   .progress-section {
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    margin-top: 1rem;
     width: 100%;
-    max-width: 400px;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
   }
   
   .progress-info {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    gap: 0.8rem;
     color: var(--success-color);
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
   
   .pulse-dot {
@@ -399,75 +297,60 @@
     background: var(--success-color);
     border-radius: 50%;
     animation: pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 10px var(--success-color);
   }
   
   @keyframes pulse {
-    0%, 100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-    50% {
-      transform: scale(1.3);
-      opacity: 0.7;
-    }
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.6; }
   }
   
-  .progress-bar {
+  /* Nuova barra di progresso stile "linea" */
+  .progress-track {
     width: 100%;
-    height: 8px;
+    height: 4px; /* Linea sottile */
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    border-radius: 2px;
     overflow: hidden;
-    margin-bottom: 0.5rem;
+    position: relative;
   }
   
-  .progress-fill {
+  .progress-line {
     height: 100%;
-    background: linear-gradient(90deg, var(--success-color), var(--accent-color));
-    border-radius: 4px;
-  }
-  
-  .progress-fill {
-    transition: width 0.3s ease;
+    background: var(--success-color);
+    border-radius: 2px;
+    box-shadow: 0 0 15px var(--success-color); /* Effetto glow */
+    transition: width 0.3s ease-out;
+    /* Aggiungiamo un gradiente per renderla più dinamica */
+    background: linear-gradient(90deg, #C5E8B7, #2EB62C);
   }
   
   .progress-text {
-    text-align: center;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 0.85rem;
-    margin-top: 0.5rem;
-  }
-  
-  .video-list {
-    margin-top: 2rem;
-    width: 100%;
-    max-width: 500px;
-  }
-  
-  .video-list-title {
-    font-size: 0.9rem;
+    text-align: right;
     color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 0.75rem;
-    font-weight: 600;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
   }
   
   .alert {
-    margin-top: 1rem;
+    margin-top: 2rem;
     padding: 1rem;
     border-radius: 8px;
     font-size: 0.95rem;
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
   }
   
   .alert.success {
-    background: rgba(46, 204, 113, 0.2);
+    background: rgba(52, 211, 153, 0.1);
     border: 1px solid var(--success-color);
     color: var(--success-color);
   }
   
   .alert.error {
-    background: rgba(231, 76, 60, 0.2);
+    background: rgba(248, 113, 113, 0.1);
     border: 1px solid var(--error-color);
     color: var(--error-color);
   }
 </style>
-

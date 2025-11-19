@@ -1,94 +1,106 @@
-/* UI Kit Moderno - Glassmorphism & Spacious */
+/* UI Kit Compatto - Centrato & Bilanciato */
 
 .step-container {
-  /* AUMENTATO: Da 1rem a 2.5rem per dare molto più respiro ai bordi */
-  padding: 2.5rem; 
-  height: 100%;
+  padding: 1.5rem 2rem; 
+  height: auto; /* Lascia che l'altezza sia determinata dal contenuto */
+  min-height: 100%; /* Ma occupa almeno tutto lo spazio se necessario */
   display: flex;
   flex-direction: column;
-  max-width: 800px; /* Evita che il testo si allunghi troppo su schermi larghi */
-  margin: 0 auto; /* Centra il contenuto se c'è spazio extra */
+  
+  /* MODIFICA: Ridotto max-width per avvicinare i pulsanti */
+  max-width: 700px; 
+  /* MODIFICA: Margin auto per centrare orizzontalmente nel wrapper */
+  margin: 0 auto; 
+  /* MODIFICA: Centra verticalmente il contenuto interno se c'è spazio */
+  justify-content: center; 
 }
 
 .step-container h3 {
-  font-size: 1.75rem; /* Testo più grande */
-  margin-bottom: 0.75rem;
+  font-size: 1.4rem;
+  margin-bottom: 0.25rem;
   color: var(--text-main);
   font-weight: 700;
 }
 
 .step-description {
   color: var(--text-muted);
-  font-size: 1.05rem;
-  line-height: 1.7;
-  /* AUMENTATO: Più spazio prima dei pulsanti */
-  margin-bottom: 2.5rem; 
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 1.5rem; 
 }
 
 /* Pulsanti di scelta (Card interattive) */
 .choice-buttons {
   display: grid;
-  /* AUMENTATO: Più spazio tra i due pulsanti */
-  gap: 1.5rem; 
+  gap: 1.25rem; 
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .choice-buttons {
+     grid-template-columns: 1fr 1fr;
+  }
 }
 
 .choice-btn {
-  background: linear-gradient(145deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.4) 100%);
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
   border: 1px solid var(--border-color);
-  /* AUMENTATO: Padding interno delle card più generoso */
-  padding: 2rem; 
+  padding: 1.5rem; 
   border-radius: var(--border-radius);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
   color: var(--text-main);
   position: relative;
-  overflow: hidden;
+  height: 100%; 
 }
 
 .choice-btn:hover {
   background: rgba(59, 130, 246, 0.1);
   border-color: #3b82f6;
-  transform: translateY(-4px); /* Movimento più accentuato */
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.4);
 }
 
 .choice-btn .icon {
-  font-size: 2.5rem;
-  margin-bottom: 1.25rem;
+  font-size: 2rem;
+  margin-bottom: 1rem;
   background: rgba(59, 130, 246, 0.15);
-  padding: 1rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
 }
 
 .choice-btn .title {
   color: var(--text-main);
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
 }
 
 .choice-btn .description {
   color: var(--text-muted);
-  font-size: 0.95rem;
-  line-height: 1.5;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
-/* Input e Form - Spaziature migliorate */
+/* Input e Form */
 .form-group {
-  margin-bottom: 1.75rem; /* Più spazio tra i campi */
+  margin-bottom: 1.25rem;
   position: relative;
 }
 
 .form-group label {
   display: block;
   color: var(--text-muted);
-  font-size: 0.9rem;
-  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -98,22 +110,76 @@
 .form-group select,
 .form-group input[type="text"] {
   width: 100%;
-  padding: 1rem 1.25rem; /* Input più alti e comodi */
+  padding: 0.8rem 1rem;
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 10px;
   color: white;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   transition: all 0.2s;
   outline: none;
 }
 
-/* ... il resto degli stili (btn-primary, etc.) rimane uguale ma beneficia del padding del container ... */
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
 
+.form-group .unit {
+  position: absolute;
+  right: 1rem;
+  top: 2.2rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Info Box */
+.info-box {
+  background: rgba(59, 130, 246, 0.08);
+  border-left: 4px solid #3b82f6;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+}
+
+.info-box h4 {
+  color: #60a5fa;
+  margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+}
+
+.info-box ul {
+  padding-left: 1.2rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+.info-box li { margin-bottom: 0.25rem; }
+
+/* Pulsanti Azione (Primary) */
 .btn-primary {
-  /* ... */
-  padding: 1.25rem; /* Pulsante più grande */
-  margin-top: 1rem;
+  background: var(--accent-gradient);
+  color: white;
+  border: none;
+  padding: 1.1rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.5rem;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  
+  /* Flex Centering */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  line-height: 1;
+  
+  margin-bottom: 0.5rem;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -132,33 +198,24 @@
 
 /* Card Risultati */
 .result-card {
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(15, 23, 42, 0.5);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1.25rem;
   margin-bottom: 1rem;
 }
 
+.score-display {
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
 .score-value {
-  font-size: 3.5rem;
+  font-size: 2.5rem;
   font-weight: 800;
   text-shadow: 0 0 20px rgba(255,255,255,0.1);
   color: var(--text-main);
-}
-
-/* Barre di progresso stilizzate */
-.range-visual {
-  background: #334155;
-  border-radius: 4px;
-  height: 6px;
-  flex: 1;
-}
-
-.range-line {
-  height: 100%;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #10b981, #3b82f6);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  line-height: 1;
 }
 
 /* Upload area */
@@ -167,6 +224,8 @@
   border-radius: 12px;
   background: rgba(15, 23, 42, 0.3);
   transition: all 0.3s;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
 }
 .upload-area:hover {
   border-color: #3b82f6;
@@ -174,9 +233,11 @@
 }
 .upload-label {
   cursor: pointer;
-  padding: 2rem;
+  padding: 1.75rem;
   text-align: center;
   display: block;
+  width: 100%;
 }
+.upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.8; }
 
 .required { color: var(--error-color); }
