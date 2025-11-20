@@ -199,7 +199,7 @@
       <div class="progress-section">
         <div class="progress-info">
           <span class="pulse-dot"></span>
-          <span>Analisi: Video {currentVideoProgress + 1} di {baselineVideos.length}</span>
+          <span>Analisi: Video {Math.min(currentVideoProgress + 1, baselineVideos.length)} di {baselineVideos.length}</span>
         </div>
         
         <div class="progress-track">
@@ -211,8 +211,7 @@
         </div>
       </div>
     {/if}
-    
-    </div>
+  </div>
   
   {#if message}
     <div class="alert {messageType}">
