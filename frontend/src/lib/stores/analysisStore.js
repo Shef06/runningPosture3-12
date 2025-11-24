@@ -27,17 +27,16 @@ const initialState = {
   // Calibrazione
   speed: null, // km/h - obbligatorio
   fps: null, // obbligatorio
-  height: 180, // cm
-  mass: 70, // kg
+  // RIMOSSI: height, mass
   
   // Risultati
   results: null,
   
-  // Baseline ranges (salvati separatamente per confronti)
-  baselineRanges: null, // { leftKneeAngle: {min, max}, rightKneeAngle: {min, max}, ... }
+  // Baseline ranges
+  baselineRanges: null, 
   
-  // Baseline thresholds (E_max e soglie dinamiche dal backend)
-  baselineThresholds: null, // { e_max, optimal, good, moderate, attention, critical }
+  // Baseline thresholds
+  baselineThresholds: null,
   
   // Analisi in corso
   isAnalyzing: false,
@@ -51,7 +50,7 @@ const initialState = {
 function createAnalysisStore() {
   const { subscribe, set, update } = writable(initialState);
   
-  // Carica dati salvati da localStorage all'inizializzazione
+  // Carica dati salvati da localStorage
   if (typeof window !== 'undefined') {
     try {
       const savedThresholds = localStorage.getItem('baselineThresholds');
@@ -105,12 +104,8 @@ function createAnalysisStore() {
     
     // Upload multiplo baseline (5 video)
     setBaselineVideos: (files) => update(state => {
-      // Revoca vecchi URL
       state.baselineVideoUrls.forEach(url => URL.revokeObjectURL(url));
-      
-      // Crea nuovi URL
       const urls = files.map(file => URL.createObjectURL(file));
-      
       return {
         ...state,
         baselineVideos: files,
@@ -120,13 +115,10 @@ function createAnalysisStore() {
     
     // Aggiungi singolo video alla baseline
     addBaselineVideo: (file) => update(state => {
-      if (state.baselineVideos.length >= 5) {
-        return state; // Già 5 video
-      }
+      if (state.baselineVideos.length >= 5) return state;
       const newVideos = [...state.baselineVideos, file];
       const newUrl = URL.createObjectURL(file);
       const newUrls = [...state.baselineVideoUrls, newUrl];
-      
       return {
         ...state,
         baselineVideos: newVideos,
@@ -139,7 +131,6 @@ function createAnalysisStore() {
       URL.revokeObjectURL(state.baselineVideoUrls[index]);
       const newVideos = state.baselineVideos.filter((_, i) => i !== index);
       const newUrls = state.baselineVideoUrls.filter((_, i) => i !== index);
-      
       return {
         ...state,
         baselineVideos: newVideos,
@@ -162,21 +153,18 @@ function createAnalysisStore() {
     setSelectedCamera: (cameraId) => update(state => ({ ...state, selectedCamera: cameraId })),
     setAvailableCameras: (cameras) => update(state => ({ ...state, availableCameras: cameras })),
     
-    // Calibrazione
-    setCalibration: (speed, fps, height, mass) => update(state => ({
+    // Calibrazione: Rimosso height e mass
+    setCalibration: (speed, fps) => update(state => ({
       ...state,
       speed: speed !== null && speed !== undefined ? speed : state.speed,
-      fps: fps !== null && fps !== undefined ? fps : state.fps,
-      height: height || state.height,
-      mass: mass || state.mass
+      fps: fps !== null && fps !== undefined ? fps : state.fps
     })),
     
     // Risultati
     setResults: (results) => update(state => ({ ...state, results, currentStep: 6 })),
     
-    // Baseline ranges (salvati separatamente)
+    // Baseline ranges
     setBaselineRanges: (ranges) => {
-      // Salva in localStorage per persistenza
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('baselineRanges', JSON.stringify(ranges));
@@ -184,16 +172,11 @@ function createAnalysisStore() {
           console.warn('⚠️ Errore nel salvare ranges in localStorage:', error);
         }
       }
-      
-      update(state => ({ 
-        ...state, 
-        baselineRanges: ranges 
-      }));
+      update(state => ({ ...state, baselineRanges: ranges }));
     },
     
-    // Baseline thresholds (E_max e soglie dinamiche)
+    // Baseline thresholds
     setBaselineThresholds: (thresholds) => {
-      // Salva in localStorage per persistenza
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('baselineThresholds', JSON.stringify(thresholds));
@@ -201,11 +184,7 @@ function createAnalysisStore() {
           console.warn('⚠️ Errore nel salvare thresholds in localStorage:', error);
         }
       }
-      
-      update(state => ({ 
-        ...state, 
-        baselineThresholds: thresholds 
-      }));
+      update(state => ({ ...state, baselineThresholds: thresholds }));
     },
     
     // Analisi
@@ -220,4 +199,3 @@ function createAnalysisStore() {
 }
 
 export const analysisStore = createAnalysisStore();
-

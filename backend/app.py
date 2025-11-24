@@ -515,6 +515,27 @@ def detect_anomaly():
         
         logger.info(f"Anomaly score: {anomaly_score:.6f}")
         
+        # Fase 3.5: Calcola serie temporali per i grafici
+        logger.info("Fase 3.5: Calcolo serie temporali per grafici...")
+        error_series = autoencoder.get_error_series(features, sequence_length=30)
+        
+        # Prepara i dati per il frontend (converti numpy array in list)
+        charts_data = {
+            'timeline': list(range(len(error_series['total_as']))),  # Asse X (Frame/Tempo)
+            'total_as': error_series['total_as'].tolist(),  # Asse Y (AS)
+            'threshold': float(autoencoder.thresholds['e_max']) if autoencoder.thresholds else 0.05,  # Linea Baseline
+            # Errori specifici per feature (opzionale, utile per drill-down)
+            'features_mse': {
+                'cpd': error_series['per_feature'][:, 0].tolist(),
+                'bos': error_series['per_feature'][:, 1].tolist(),
+                'rearfoot_eversion': error_series['per_feature'][:, 2].tolist() if error_series['per_feature'].shape[1] > 2 else [],
+                'lateral_trunk_lean': error_series['per_feature'][:, 3].tolist() if error_series['per_feature'].shape[1] > 3 else [],
+                'gct': error_series['per_feature'][:, 4].tolist() if error_series['per_feature'].shape[1] > 4 else [],
+                'cadence': error_series['per_feature'][:, 5].tolist() if error_series['per_feature'].shape[1] > 5 else []
+            }
+        }
+        logger.info(f"Serie temporali calcolate: {len(charts_data['timeline'])} punti")
+        
         # Fase 4: Calcola statistiche complete per tutte le metriche (TUTTO NEL BACKEND)
         logger.info("Fase 4: Calcolo statistiche complete...")
         
@@ -648,7 +669,9 @@ def detect_anomaly():
                 'cpd_sa': round(asymmetry.get('cpd_sa', 0.0), 2)
             },
             'baseline_speed_kmh': float(baseline_speed),
-            'baseline_fps': float(baseline_fps)
+            'baseline_fps': float(baseline_fps),
+            # Dati per i grafici temporali
+            'charts': charts_data
         }
         
         logger.info("=== Analisi video completata ===")

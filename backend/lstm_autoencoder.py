@@ -695,3 +695,38 @@ class LSTMAutoencoder:
         
         logger.info(f"Modello caricato da: {os.path.basename(filepath)}")
 
+    def get_error_series(self, data: np.ndarray, sequence_length: int = 30) -> Dict[str, np.ndarray]:
+        """
+        Calcola la serie temporale degli errori per grafici
+        Restituisce sia l'errore totale (AS) che l'errore per feature nel tempo
+        """
+        sequences = self.prepare_sequences(data, sequence_length)
+        reconstructed = self.model.predict(sequences, verbose=0)
+        
+        # Calcola errore quadratico (MSE) per ogni sequenza
+        # Shape: (n_sequences, timesteps, n_features)
+        squared_errors = np.square(sequences - reconstructed)
+        
+        # 1. Anomaly Score Totale nel tempo (media pesata delle features)
+        # Applica pesi
+        n_features = sequences.shape[2]
+        if n_features <= len(self.feature_weights):
+            weights = self.feature_weights[:n_features]
+            weights = weights / np.sum(weights) * n_features
+            weighted_errors = squared_errors * weights[np.newaxis, np.newaxis, :]
+        else:
+            weighted_errors = squared_errors
+            
+        # Media su timesteps e features per ottenere un valore per ogni istante t
+        # (n_sequences,)
+        as_over_time = np.mean(weighted_errors, axis=(1, 2))
+        
+        # 2. MSE per singola feature nel tempo
+        # Media solo sui timesteps -> (n_sequences, n_features)
+        mse_per_feature = np.mean(squared_errors, axis=1)
+        
+        return {
+            'total_as': as_over_time,
+            'per_feature': mse_per_feature
+        }
+

@@ -1,5 +1,6 @@
 <script>
   import { analysisStore } from '../../stores/analysisStore.js';
+  import AnalysisChart from '../AnalysisChart.svelte';
   
   $: results = $analysisStore.results;
   $: mainFlow = $analysisStore.mainFlow;
@@ -244,6 +245,37 @@
             </div>
           </div>
         {/if}
+        
+        {#if results.charts}
+          <div class="charts-section">
+            <h4>📈 Analisi Temporale (Time Series)</h4>
+            
+            <div class="chart-wrapper">
+              <h5>Anomaly Score (AS) nel tempo</h5>
+              <p class="chart-desc">La linea rossa indica la soglia della tua Baseline. I picchi sopra la linea indicano anomalie.</p>
+              <AnalysisChart 
+                data={results.charts.total_as} 
+                labels={results.charts.timeline} 
+                threshold={results.charts.threshold}
+                title="Anomaly Score"
+                color="#3b82f6"
+              />
+            </div>
+
+            {#if results.charts.features_mse?.cpd}
+              <div class="chart-wrapper">
+                <h5>Deviazione Pelvica (MSE)</h5>
+                <AnalysisChart 
+                  data={results.charts.features_mse.cpd} 
+                  labels={results.charts.timeline} 
+                  threshold={results.charts.threshold * 0.5}
+                  title="Pelvic Drop Error"
+                  color="#10b981"
+                />
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
     {/if}
     
@@ -474,6 +506,29 @@
     padding: 1.5rem;
     color: rgba(255, 255, 255, 0.5);
     font-size: 0.85rem;
+  }
+  
+  .charts-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .chart-wrapper {
+    margin-bottom: 2rem;
+  }
+  
+  .chart-wrapper h5 {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-light);
+  }
+  
+  .chart-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    line-height: 1.4;
   }
   
   /* Manteniamo un fallback per schermi piccolissimi */
