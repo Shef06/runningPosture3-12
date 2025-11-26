@@ -9,9 +9,7 @@ import os
 import sys
 import json
 import logging
-import numpy as np
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import Config
 from pose_engine import PoseEngine
 
@@ -76,8 +74,6 @@ def create_baseline():
     3. Calcola statistiche aggregate (Media, StdDev, Min, Max)
     4. Salva un file JSON con le statistiche
     """
-    logger.info("=" * 60)
-    logger.info("📥 Richiesta creazione baseline ricevuta")
     try:
         # Controlla i file
         if 'videos' not in request.files:
@@ -111,19 +107,6 @@ def create_baseline():
         
         logger.info(f"=== Creazione Baseline ===")
         logger.info(f"Video salvati: {[os.path.basename(vp) for vp in video_paths]}")
-        
-        # Verifica che i video esistano e siano leggibili
-        for vp in video_paths:
-            if not os.path.exists(vp):
-                return jsonify({
-                    'status': 'error',
-                    'message': f'Video non trovato: {os.path.basename(vp)}'
-                }), 400
-            if os.path.getsize(vp) == 0:
-                return jsonify({
-                    'status': 'error',
-                    'message': f'Video vuoto: {os.path.basename(vp)}'
-                }), 400
         
         # Valida parametri
         if 'speed' not in request.form or not request.form['speed']:
@@ -160,74 +143,25 @@ def create_baseline():
             }), 400
         
         logger.info(f"📊 Parametri baseline: Velocità={speed} km/h, FPS={fps}")
-        logger.info(f"📁 Directory models: {Config.MODEL_FOLDER}")
-        logger.info(f"📁 Directory uploads: {Config.UPLOAD_FOLDER}")
         
-        # Funzione helper per processare un singolo video (thread-safe)
-        def process_single_video(i, video_path):
-            """Processa un singolo video creando una nuova istanza di PoseEngine (thread-safe)"""
-            try:
-                logger.info(f"Processing video {i+1}/5: {os.path.basename(video_path)}")
-                # Crea nuova istanza per ogni thread (MediaPipe non è thread-safe)
-                logger.debug(f"  Creazione PoseEngine per video {i+1}...")
-                engine = PoseEngine(
-                    model_complexity=Config.MEDIAPIPE_MODEL_COMPLEXITY,
-                    min_detection_confidence=Config.MEDIAPIPE_MIN_DETECTION_CONFIDENCE,
-                    min_tracking_confidence=Config.MEDIAPIPE_MIN_TRACKING_CONFIDENCE
-                )
-                logger.debug(f"  PoseEngine creato, avvio processing video {i+1}...")
-                result = engine.process_video(video_path, fps=fps)
-                logger.debug(f"  Processing video {i+1} completato")
-                return i, result
-            except Exception as e:
-                logger.error(f"  ❌ Errore in process_single_video per video {i+1}: {type(e).__name__}: {str(e)}", exc_info=True)
-                raise
+        # Inizializza PoseEngine
+        engine = PoseEngine(
+            model_complexity=Config.MEDIAPIPE_MODEL_COMPLEXITY,
+            min_detection_confidence=Config.MEDIAPIPE_MIN_DETECTION_CONFIDENCE,
+            min_tracking_confidence=Config.MEDIAPIPE_MIN_TRACKING_CONFIDENCE
+        )
         
-        # Processa tutti i 5 video in parallelo
-        logger.info("Fase 1: Processing video con PoseEngine (parallelo)...")
-        videos_data = [None] * len(video_paths)
-        errors = []
-        
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            # Sottometti tutti i task
-            future_to_index = {
-                executor.submit(process_single_video, i, vp): i 
-                for i, vp in enumerate(video_paths)
-            }
-            
-            # Raccogli risultati man mano che completano
-            for future in as_completed(future_to_index):
-                i = future_to_index[future]
-                try:
-                    idx, video_data = future.result()
-                    videos_data[idx] = video_data
-                    logger.info(f"✓ Completato video {idx+1}/5: {os.path.basename(video_paths[idx])}")
-                except Exception as e:
-                    error_msg = f"Errore nell'elaborazione video {i+1}/5 ({os.path.basename(video_paths[i])}): {str(e)}"
-                    logger.error(f"⚠ {error_msg}", exc_info=True)
-                    errors.append(error_msg)
-        
-        # Verifica che tutti i video siano stati processati
-        videos_data = [v for v in videos_data if v is not None]
-        if len(videos_data) != len(video_paths):
-            error_details = "; ".join(errors) if errors else "Errore sconosciuto"
-            logger.error(f"❌ Fallimento processing: {len(videos_data)}/{len(video_paths)} video processati. Errori: {error_details}")
-            return jsonify({
-                'status': 'error',
-                'message': f'Errore: solo {len(videos_data)}/{len(video_paths)} video processati con successo. Dettagli: {error_details}'
-            }), 500
+        # Processa tutti i 5 video
+        logger.info("Fase 1: Processing video con PoseEngine...")
+        videos_data = []
+        for i, video_path in enumerate(video_paths):
+            logger.info(f"Processing video {i+1}/5: {os.path.basename(video_path)}")
+            video_data = engine.process_video(video_path, fps=fps)
+            videos_data.append(video_data)
         
         # Crea statistiche baseline
         logger.info("Fase 2: Creazione statistiche baseline...")
-        try:
-            # Crea un'istanza di engine solo per create_baseline_stats (non usa MediaPipe)
-            engine = PoseEngine()
-            logger.debug("  Calcolo statistiche aggregate...")
-            baseline_stats = engine.create_baseline_stats(videos_data)
-            logger.info(f"  ✓ Statistiche calcolate: {len(baseline_stats)} metriche")
-        except Exception as e:
-            logger.error(f"❌ Errore nella creazione statistiche baseline: {type(e).__name__}: {str(e)}", exc_info=True)
-            raise
+        baseline_stats = engine.create_baseline_stats(videos_data)
         
         # Aggiungi parametri di calibrazione
         baseline_stats['speed_kmh'] = float(speed)
@@ -235,16 +169,9 @@ def create_baseline():
         baseline_stats['created_at'] = datetime.now().isoformat()
         
         # Salva baseline JSON
-        logger.info(f"Fase 3: Salvataggio baseline in: {BASELINE_JSON_PATH}")
-        try:
-            # Assicurati che la directory esista
-            os.makedirs(os.path.dirname(BASELINE_JSON_PATH), exist_ok=True)
-            with open(BASELINE_JSON_PATH, 'w') as f:
-                json.dump(baseline_stats, f, indent=2)
-            logger.info(f"  ✓ Baseline salvata con successo")
-        except Exception as e:
-            logger.error(f"❌ Errore nel salvataggio baseline: {type(e).__name__}: {str(e)}", exc_info=True)
-            raise
+        logger.info(f"Salvataggio baseline in: {BASELINE_JSON_PATH}")
+        with open(BASELINE_JSON_PATH, 'w') as f:
+            json.dump(baseline_stats, f, indent=2)
         
         # Pulisci video temporanei
         for video_path in video_paths:
@@ -291,17 +218,10 @@ def create_baseline():
         })
         
     except Exception as e:
-        error_msg = str(e)
-        error_type = type(e).__name__
-        import traceback
-        error_traceback = traceback.format_exc()
-        logger.error(f"❌ Errore nella creazione baseline: {error_type}: {error_msg}", exc_info=True)
-        logger.error(f"Traceback completo:\n{error_traceback}")
+        logger.error(f"Errore nella creazione baseline: {str(e)}", exc_info=True)
         return jsonify({
             'status': 'error',
-            'message': f'Errore interno: {error_type}: {error_msg}',
-            'error_type': error_type,
-            'traceback': error_traceback if app.config.get('DEBUG', False) else None
+            'message': f'Errore interno: {str(e)}'
         }), 500
 
 
@@ -461,8 +381,7 @@ def detect_anomaly():
                 'timeline': list(range(video_data['n_frames'])),
                 'left_knee_valgus': video_data['left_knee_valgus'],
                 'right_knee_valgus': video_data['right_knee_valgus'],
-                'pelvic_drop': video_data['pelvic_drop'],
-                'cadence': video_data.get('cadence', [])  # Serie temporale della cadenza
+                'pelvic_drop': video_data['pelvic_drop']
             },
             
             # Info video
@@ -503,37 +422,9 @@ if __name__ == '__main__':
     logger.info("  🏃 RUNNING ANALYZER - Backend Server")
     logger.info("  Approccio: Geometrico/Statistico (No Deep Learning)")
     logger.info("=" * 60)
-    
-    # Verifica dipendenze critiche
-    try:
-        import scipy
-        logger.info(f"✓ SciPy {scipy.__version__} installato")
-    except ImportError:
-        logger.error("❌ SciPy non installato! Esegui: pip install scipy==1.11.4")
-        sys.exit(1)
-    
-    try:
-        import mediapipe
-        logger.info(f"✓ MediaPipe {mediapipe.__version__} installato")
-    except ImportError as e:
-        logger.error(f"❌ MediaPipe non installato! Errore: {e}")
-        sys.exit(1)
-    
-    # Verifica directory
-    logger.info(f"📁 Upload folder: {Config.UPLOAD_FOLDER}")
-    logger.info(f"📁 Model folder: {Config.MODEL_FOLDER}")
-    logger.info(f"📁 Baseline path: {BASELINE_JSON_PATH}")
-    
-    if not os.path.exists(Config.UPLOAD_FOLDER):
-        logger.warning(f"⚠ Upload folder non esiste, creazione...")
-        os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
-    
-    if not os.path.exists(Config.MODEL_FOLDER):
-        logger.warning(f"⚠ Model folder non esiste, creazione...")
-        os.makedirs(Config.MODEL_FOLDER, exist_ok=True)
-    
-    logger.info("=" * 60)
-    logger.info("🚀 Server in avvio su http://0.0.0.0:5000")
+    logger.info(f"Upload folder: {Config.UPLOAD_FOLDER}")
+    logger.info(f"Model folder: {Config.MODEL_FOLDER}")
+    logger.info(f"Baseline path: {BASELINE_JSON_PATH}")
     logger.info("=" * 60)
     
     app.run(
