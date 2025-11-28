@@ -30,8 +30,8 @@
   }
 
   // Apri modal grafico
-  function openChartModal(title, data, labels, color, baselineMean, baselineStd) {
-    expandedChart = { title, data, labels, color, baselineMean, baselineStd };
+  function openChartModal(title, data, labels, color, baselineMean, baselineStd, yAxisMin = null, yAxisMax = null, beginAtZero = true, unit = "") {
+    expandedChart = { title, data, labels, color, baselineMean, baselineStd, yAxisMin, yAxisMax, beginAtZero, unit };
   }
 
   // Chiudi modal
@@ -614,13 +614,19 @@
                   color="#10b981"
                   baselineMean={results.metrics?.knee_flexion_ic?.baseline_mean}
                   baselineStd={results.metrics?.knee_flexion_ic?.baseline_std}
+                  beginAtZero={false}
+                  unit="°"
                   onClick={() => openChartModal(
                     "Flessione Ginocchio @ IC",
                     results.charts.knee_flexion_ic,
                     results.charts.timeline,
                     "#10b981",
                     results.metrics?.knee_flexion_ic?.baseline_mean,
-                    results.metrics?.knee_flexion_ic?.baseline_std
+                    results.metrics?.knee_flexion_ic?.baseline_std,
+                    null,
+                    null,
+                    false,
+                    "°"
                   )}
                 />
               </div>
@@ -636,13 +642,21 @@
                   color="#f59e0b"
                   baselineMean={results.metrics?.trunk_lean?.baseline_mean}
                   baselineStd={results.metrics?.trunk_lean?.baseline_std}
+                  beginAtZero={false}
+                  yAxisMin={-90}
+                  yAxisMax={90}
+                  unit="°"
                   onClick={() => openChartModal(
                     "Trunk Lean",
                     results.charts.trunk_lean,
                     results.charts.timeline,
                     "#f59e0b",
                     results.metrics?.trunk_lean?.baseline_mean,
-                    results.metrics?.trunk_lean?.baseline_std
+                    results.metrics?.trunk_lean?.baseline_std,
+                    -90,
+                    90,
+                    false,
+                    "°"
                   )}
                 />
               </div>
@@ -658,13 +672,21 @@
                   color="#8b5cf6"
                   baselineMean={results.metrics?.ground_contact_time?.baseline_mean}
                   baselineStd={results.metrics?.ground_contact_time?.baseline_std}
+                  beginAtZero={true}
+                  yAxisMin={0}
+                  yAxisMax={null}
+                  unit="s"
                   onClick={() => openChartModal(
                     "Ground Contact Time",
                     results.charts.ground_contact_time,
                     results.charts.timeline,
                     "#8b5cf6",
                     results.metrics?.ground_contact_time?.baseline_mean,
-                    results.metrics?.ground_contact_time?.baseline_std
+                    results.metrics?.ground_contact_time?.baseline_std,
+                    0,
+                    null,
+                    true,
+                    "s"
                   )}
                 />
               </div>

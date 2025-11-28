@@ -10,6 +10,10 @@
     export let title = "Grafico";
     export let color = "#3b82f6";
     export let onClick = null;  // Funzione callback per il click
+    export let yAxisMin = null;  // Minimo personalizzato per l'asse Y
+    export let yAxisMax = null;  // Massimo personalizzato per l'asse Y
+    export let beginAtZero = true;  // Se iniziare l'asse Y da zero
+    export let unit = "";  // Unità di misura per il tooltip
 
     let chartCanvas;
     let chartInstance;
@@ -100,18 +104,44 @@
           maintainAspectRatio: false,
           interaction: { intersect: false, mode: 'index' },
           plugins: { 
-            legend: { labels: { color: '#94a3b8' } },
-            tooltip: { enabled: true }
+            legend: { labels: { color: '#94a3b8' } }
           },
           scales: {
             y: { 
               grid: { color: 'rgba(255,255,255,0.05)' }, 
               ticks: { color: '#94a3b8' },
-              beginAtZero: true
+              beginAtZero: beginAtZero,
+              min: yAxisMin !== null ? yAxisMin : undefined,
+              max: yAxisMax !== null ? yAxisMax : undefined,
+              // Calcola automaticamente i limiti se non specificati
+              ...(yAxisMin === null && yAxisMax === null && !beginAtZero ? {
+                suggestedMin: Math.min(...data.filter(d => d !== null && d !== undefined && !isNaN(d))) * 0.9,
+                suggestedMax: Math.max(...data.filter(d => d !== null && d !== undefined && !isNaN(d))) * 1.1
+              } : {})
             },
             x: { 
               grid: { display: false },
               ticks: { display: false }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  if (context.parsed.y !== null) {
+                    const value = context.parsed.y;
+                    label += value.toFixed(unit === 's' ? 3 : unit === '°' ? 1 : 2);
+                    if (unit) {
+                      label += ' ' + unit;
+                    }
+                  }
+                  return label;
+                }
+              }
             }
           }
         }

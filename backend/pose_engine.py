@@ -274,20 +274,33 @@ class PoseEngine:
         
         # Calcola l'angolo rispetto alla verticale (asse Y)
         # L'asse Y in MediaPipe punta verso il basso, quindi invertiamo
-        vertical = np.array([0, -1])  # Vettore verticale verso l'alto
+        # Usa il piano sagittale (X-Z) per la vista laterale
+        # Il vettore verticale è (0, -1) nel piano Y
         trunk_2d = np.array([trunk_vector[0], trunk_vector[1]])
+        vertical = np.array([0, -1])  # Vettore verticale verso l'alto
         
         # Calcola l'angolo usando prodotto scalare
-        cosine_angle = np.dot(trunk_2d, vertical) / (np.linalg.norm(trunk_2d) * np.linalg.norm(vertical) + 1e-6)
-        cosine_angle = np.clip(cosine_angle, -1.0, 1.0)
-        angle = np.arccos(cosine_angle)
+        trunk_norm = np.linalg.norm(trunk_2d)
+        if trunk_norm < 1e-6:
+            return 0.0
         
-        # Converti in gradi e considera il segno (positivo = lean forward)
-        angle_deg = np.degrees(angle)
-        if trunk_vector[0] > 0:  # Inclinato in avanti
-            return angle_deg
-        else:  # Inclinato indietro
-            return -angle_deg
+        cosine_angle = np.dot(trunk_2d, vertical) / (trunk_norm * np.linalg.norm(vertical))
+        cosine_angle = np.clip(cosine_angle, -1.0, 1.0)
+        angle_rad = np.arccos(cosine_angle)
+        
+        # Converti in gradi e normalizza tra -90 e +90 gradi
+        # Angolo positivo = inclinato in avanti, negativo = inclinato indietro
+        angle_deg = np.degrees(angle_rad)
+        
+        # Normalizza: se il tronco è inclinato in avanti (X positivo), angolo positivo
+        # Se inclinato indietro (X negativo), angolo negativo
+        if trunk_vector[0] < 0:  # Inclinato indietro
+            angle_deg = -angle_deg
+        
+        # Limita l'angolo tra -90 e +90 gradi
+        angle_deg = np.clip(angle_deg, -90.0, 90.0)
+        
+        return float(angle_deg)
     
     def _detect_ground_contacts(self, ankle_y: np.ndarray, fps: float) -> List[Tuple[int, int]]:
         """
@@ -305,9 +318,12 @@ class PoseEngine:
         
         # Trova i minimi locali (quando il piede è a terra)
         # Usa una soglia per determinare quando il piede è "a terra"
+        # Soglia più permissiva (0.2 invece di 0.1) per rilevare più contatti
         min_height = np.min(ankle_y_inverted)
         max_height = np.max(ankle_y_inverted)
-        threshold = min_height + 0.1 * (max_height - min_height)
+        threshold = min_height + 0.2 * (max_height - min_height)
+        
+        logger.debug(f"📊 GCT Detection: min={min_height:.4f}, max={max_height:.4f}, threshold={threshold:.4f}")
         
         # Il piede è a terra quando ankle_y_inverted è vicino al minimo
         on_ground = ankle_y_inverted < threshold
@@ -844,16 +860,65 @@ class PoseEngine:
             ankle_y_avg = (left_ankle_y_arr + right_ankle_y_arr) / 2.0
             contacts = self._detect_ground_contacts(ankle_y_avg, fps)
             
+            logger.debug(f"📊 Contatti rilevati: {len(contacts)}")
+            if len(contacts) > 0:
+                logger.debug(f"📊 Primi 3 contatti: {contacts[:min(3, len(contacts))]}")
+            
             # Calcola GCT per ogni contatto
             gct_values = []
             gct_series = np.zeros(frame_count)
+            
+            # Prima passata: calcola GCT per ogni periodo di contatto
             for start, end in contacts:
                 contact_duration = (end - start + 1) / fps
                 gct_values.append(contact_duration)
                 # Riempi la serie temporale per questo periodo di contatto
                 gct_series[start:end+1] = contact_duration
             
+            # Seconda passata: interpola i valori tra i contatti per avere una serie più continua
+            # Usa forward fill con decadimento graduale per i frame tra i contatti
+            if len(contacts) > 0:
+                # Ordina i contatti per frame di inizio
+                sorted_contacts = sorted(contacts, key=lambda x: x[0])
+                
+                # Forward fill con decadimento per ogni intervallo tra contatti
+                for i in range(len(sorted_contacts) - 1):
+                    current_end = sorted_contacts[i][1]
+                    next_start = sorted_contacts[i+1][0]
+                    current_gct = gct_series[current_end]
+                    
+                    # Interpola linearmente tra il contatto corrente e il prossimo
+                    gap = next_start - current_end
+                    if gap > 0 and current_gct > 0:
+                        # Calcola il GCT del prossimo contatto
+                        next_gct = gct_series[next_start] if next_start < frame_count else current_gct
+                        
+                        # Interpola linearmente tra i due valori
+                        for j in range(current_end + 1, next_start):
+                            if j < frame_count:
+                                # Interpolazione lineare con decadimento graduale
+                                alpha = (j - current_end) / gap
+                                # Usa una curva di decadimento esponenziale per rendere più naturale
+                                decay = np.exp(-alpha * 2.0)  # Decadimento esponenziale
+                                gct_series[j] = current_gct * decay
+                
+                # Forward fill per i frame dopo l'ultimo contatto (con decadimento)
+                if len(sorted_contacts) > 0:
+                    last_contact_end = sorted_contacts[-1][1]
+                    last_gct = gct_series[last_contact_end]
+                    if last_gct > 0:
+                        # Applica decadimento esponenziale per i frame dopo l'ultimo contatto
+                        max_decay_frames = int(fps * 0.5)  # Decadimento per max 0.5 secondi
+                        for j in range(last_contact_end + 1, min(last_contact_end + max_decay_frames, frame_count)):
+                            alpha = (j - last_contact_end) / max_decay_frames
+                            decay = np.exp(-alpha * 3.0)  # Decadimento più veloce
+                            gct_series[j] = last_gct * decay
+            
             avg_gct = np.mean(gct_values) if len(gct_values) > 0 else 0.0
+            
+            # Log statistiche sulla serie GCT
+            non_zero_frames = np.count_nonzero(gct_series)
+            logger.debug(f"📊 GCT Serie: {non_zero_frames}/{frame_count} frame con valori non-zero ({100*non_zero_frames/frame_count:.1f}%)")
             
             logger.info(f"Overstriding: μ={np.mean(overstriding_arr):.4f}, σ={np.std(overstriding_arr):.4f}")
             logger.info(f"Flessione Ginocchio @ IC: μ={np.mean(knee_flexion_ic_arr):.2f}°, σ={np.std(knee_flexion_ic_arr):.2f}°")
