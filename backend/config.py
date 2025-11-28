@@ -10,6 +10,7 @@ class Config:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
     MODEL_FOLDER = os.path.join(BASE_DIR, 'models')
+    PROCESSED_VIDEOS_FOLDER = os.path.join(BASE_DIR, 'processed_videos')
     
     # Estensioni video permesse
     ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm'}
@@ -33,4 +34,5 @@ class Config:
         """Inizializza le cartelle necessarie"""
         os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
         os.makedirs(Config.MODEL_FOLDER, exist_ok=True)
+        os.makedirs(Config.PROCESSED_VIDEOS_FOLDER, exist_ok=True)
 

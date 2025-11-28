@@ -122,7 +122,9 @@
           baselineCreated: true,
           videosProcessed: 5,
           totalFrames: data.details?.n_frames_total || 0,
-          baselineRanges: data.details?.feature_ranges ? {
+          viewType: data.viewType || 'posterior',
+          skeleton_video_url: data.skeleton_video_url || null, // Includi URL video con scheletro
+          baselineRanges: data.baselineRanges || (data.details?.feature_ranges ? {
             features: {
               cpd: data.details.feature_ranges.cpd,
               bos: data.details.feature_ranges.bos,
@@ -131,13 +133,14 @@
               gct: data.details.feature_ranges.gct,
               cadence: data.details.feature_ranges.cadence
             }
-          } : null,
+          } : null),
           feature_metrics: data.details?.feature_metrics,
           biomechanics: data.details?.biomechanics,
           details: data.details,
           timestamp: new Date().toISOString()
         };
         analysisStore.setResults(results);
+        console.log('📹 Risultati baseline salvati, skeleton_video_url:', results.skeleton_video_url);
         
         // Salva E_max e thresholds se disponibili
         if (data.details?.thresholds) {

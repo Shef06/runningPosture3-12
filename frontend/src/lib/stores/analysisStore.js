@@ -11,6 +11,9 @@ const initialState = {
   // Step corrente
   currentStep: 1,
   
+  // Vista del video
+  viewType: 'posterior', // 'posterior' | 'lateral'
+  
   // Metodo di acquisizione video
   videoMethod: null, // 'upload' | 'record'
   
@@ -83,11 +86,18 @@ function createAnalysisStore() {
     prevStep: () => update(state => ({ ...state, currentStep: Math.max(1, state.currentStep - 1) })),
     goToStep: (step) => update(state => ({ ...state, currentStep: step })),
     
+    // Vista del video
+    setViewType: (viewType) => update(state => ({ 
+      ...state, 
+      viewType: viewType,
+      currentStep: 3 
+    })),
+    
     // Metodo video
     setVideoMethod: (method) => update(state => ({ 
       ...state, 
       videoMethod: method,
-      currentStep: 3 
+      currentStep: 4 
     })),
     
     // Upload video singolo
@@ -161,7 +171,7 @@ function createAnalysisStore() {
     })),
     
     // Risultati
-    setResults: (results) => update(state => ({ ...state, results, currentStep: 6 })),
+    setResults: (results) => update(state => ({ ...state, results, currentStep: 7 })),
     
     // Baseline ranges
     setBaselineRanges: (ranges) => {

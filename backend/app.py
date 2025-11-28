@@ -56,6 +56,34 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
 
 
+def safe_remove_file(filepath):
+    """
+    Rimuove un file in modo sicuro, gestendo errori di permesso su Windows
+    
+    Args:
+        filepath: Percorso del file da rimuovere
+        
+    Returns:
+        bool: True se rimosso con successo, False altrimenti
+    """
+    if not os.path.exists(filepath):
+        return True
+    
+    try:
+        os.remove(filepath)
+        logger.debug(f"✓ File rimosso: {os.path.basename(filepath)}")
+        return True
+    except PermissionError as e:
+        # Su Windows, il file potrebbe essere ancora aperto da un altro processo (browser, player, ecc.)
+        logger.warning(f"⚠ Impossibile rimuovere file {os.path.basename(filepath)}: {e}")
+        logger.warning(f"  Il file è probabilmente ancora aperto da un altro processo.")
+        logger.warning(f"  Verrà rimosso automaticamente quando non sarà più in uso.")
+        return False
+    except OSError as e:
+        logger.warning(f"⚠ Errore nella rimozione file {os.path.basename(filepath)}: {e}")
+        return False
+
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Endpoint per verificare lo stato del server"""
@@ -63,6 +91,53 @@ def health_check():
         'status': 'success',
         'message': 'Running Analyzer Server attivo'
     })
+
+
+@app.route('/api/processed_video/<path:filename>', methods=['GET'])
+def get_processed_video(filename):
+    """Endpoint per servire i video processati con scheletro"""
+    from config import Config
+    from urllib.parse import unquote
+    
+    # Decodifica il nome del file dall'URL (gestisce caratteri speciali)
+    filename = unquote(filename)
+    
+    # Sanitizza il nome del file per sicurezza (rimuove path traversal)
+    filename = os.path.basename(filename)  # Rimuove eventuali percorsi
+    
+    video_path = os.path.join(Config.PROCESSED_VIDEOS_FOLDER, filename)
+    
+    logger.debug(f"📹 Richiesta video: {filename}")
+    logger.debug(f"📹 Percorso completo: {video_path}")
+    logger.debug(f"📹 File esiste: {os.path.exists(video_path)}")
+    
+    if not os.path.exists(video_path):
+        logger.warning(f"⚠ Video non trovato: {video_path}")
+        # Lista tutti i file nella directory per debug
+        if os.path.exists(Config.PROCESSED_VIDEOS_FOLDER):
+            files = os.listdir(Config.PROCESSED_VIDEOS_FOLDER)
+            logger.debug(f"📁 File disponibili in processed_videos: {files}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Video non trovato: {filename}'
+        }), 404
+    
+    # Verifica che il file sia nella directory corretta (sicurezza)
+    if not os.path.abspath(video_path).startswith(os.path.abspath(Config.PROCESSED_VIDEOS_FOLDER)):
+        logger.warning(f"⚠ Tentativo di accesso non autorizzato: {video_path}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Accesso negato'
+        }), 403
+    
+    logger.info(f"✅ Invio video: {filename}")
+    
+    # Aggiungi headers per supporto video streaming e CORS
+    response = send_from_directory(Config.PROCESSED_VIDEOS_FOLDER, filename)
+    response.headers['Accept-Ranges'] = 'bytes'
+    response.headers['Content-Type'] = 'video/mp4'
+    response.headers['Cache-Control'] = 'public, max-age=3600'
+    return response
 
 
 @app.route('/api/create_baseline', methods=['POST'])
@@ -138,6 +213,14 @@ def create_baseline():
                 'message': 'FPS del video (fps) è obbligatorio'
             }), 400
         
+        # View type (opzionale, default='posterior')
+        view_type = request.form.get('view_type', 'posterior')
+        if view_type not in ['posterior', 'lateral']:
+            return jsonify({
+                'status': 'error',
+                'message': 'view_type deve essere "posterior" o "lateral"'
+            }), 400
+        
         try:
             speed = float(request.form['speed'])
             fps = float(request.form['fps'])
@@ -159,7 +242,7 @@ def create_baseline():
                 'message': 'FPS deve essere tra 0 e 240'
             }), 400
         
-        logger.info(f"📊 Parametri baseline: Velocità={speed} km/h, FPS={fps}")
+        logger.info(f"📊 Parametri baseline: Vista={view_type}, Velocità={speed} km/h, FPS={fps}")
         logger.info(f"📁 Directory models: {Config.MODEL_FOLDER}")
         logger.info(f"📁 Directory uploads: {Config.UPLOAD_FOLDER}")
         
@@ -176,7 +259,7 @@ def create_baseline():
                     min_tracking_confidence=Config.MEDIAPIPE_MIN_TRACKING_CONFIDENCE
                 )
                 logger.debug(f"  PoseEngine creato, avvio processing video {i+1}...")
-                result = engine.process_video(video_path, fps=fps)
+                result = engine.process_video(video_path, fps=fps, view_type=view_type)
                 logger.debug(f"  Processing video {i+1} completato")
                 return i, result
             except Exception as e:
@@ -230,6 +313,7 @@ def create_baseline():
             raise
         
         # Aggiungi parametri di calibrazione
+        baseline_stats['view_type'] = view_type
         baseline_stats['speed_kmh'] = float(speed)
         baseline_stats['fps'] = float(fps)
         baseline_stats['created_at'] = datetime.now().isoformat()
@@ -248,17 +332,38 @@ def create_baseline():
         
         # Pulisci video temporanei
         for video_path in video_paths:
-            if os.path.exists(video_path):
-                os.remove(video_path)
+            safe_remove_file(video_path)
         
         logger.info("✅ Baseline creata con successo!")
         
+        # Prepara URL video con scheletro (usa l'ultimo video processato come esempio)
+        skeleton_video_url = None
+        if videos_data and len(videos_data) > 0:
+            last_video_data = videos_data[-1]
+            if last_video_data.get('skeleton_video_path'):
+                skeleton_path = last_video_data['skeleton_video_path']
+                if os.path.exists(skeleton_path):
+                    skeleton_filename = os.path.basename(skeleton_path)
+                    # URL encode il nome del file per gestire caratteri speciali
+                    from urllib.parse import quote
+                    skeleton_video_url = f'/api/processed_video/{quote(skeleton_filename)}'
+                    logger.info(f"📹 Video esempio con scheletro disponibile: {skeleton_filename}")
+                    logger.info(f"📹 URL video: {skeleton_video_url}")
+                else:
+                    logger.warning(f"⚠ Video scheletro non trovato: {skeleton_path}")
+        
         # Prepara risposta per frontend
-        return jsonify({
+        response_data = {
             'status': 'success',
             'message': 'Baseline creata con successo',
             'baselineCreated': True,
-            'baselineRanges': {
+            'viewType': view_type,
+            'skeleton_video_url': skeleton_video_url,
+            'baselineRanges': {}
+        }
+        
+        if view_type == 'posterior':
+            response_data['baselineRanges'] = {
                 'leftKneeValgus': {
                     'min': baseline_stats['left_knee_valgus']['min'],
                     'max': baseline_stats['left_knee_valgus']['max'],
@@ -288,7 +393,39 @@ def create_baseline():
                     'unit': 'spm'
                 }
             }
-        })
+        else:  # lateral
+            response_data['baselineRanges'] = {
+                'overstriding': {
+                    'min': baseline_stats['overstriding']['min'],
+                    'max': baseline_stats['overstriding']['max'],
+                    'mean': baseline_stats['overstriding']['mean'],
+                    'std': baseline_stats['overstriding']['std'],
+                    'unit': 'm'
+                },
+                'kneeFlexionIC': {
+                    'min': baseline_stats['knee_flexion_ic']['min'],
+                    'max': baseline_stats['knee_flexion_ic']['max'],
+                    'mean': baseline_stats['knee_flexion_ic']['mean'],
+                    'std': baseline_stats['knee_flexion_ic']['std'],
+                    'unit': '°'
+                },
+                'trunkLean': {
+                    'min': baseline_stats['trunk_lean']['min'],
+                    'max': baseline_stats['trunk_lean']['max'],
+                    'mean': baseline_stats['trunk_lean']['mean'],
+                    'std': baseline_stats['trunk_lean']['std'],
+                    'unit': '°'
+                },
+                'groundContactTime': {
+                    'min': baseline_stats['ground_contact_time']['min'],
+                    'max': baseline_stats['ground_contact_time']['max'],
+                    'mean': baseline_stats['ground_contact_time']['mean'],
+                    'std': baseline_stats['ground_contact_time']['std'],
+                    'unit': 's'
+                }
+            }
+        
+        return jsonify(response_data)
         
     except Exception as e:
         error_msg = str(e)
@@ -354,6 +491,14 @@ def detect_anomaly():
                 'message': 'FPS del video (fps) è obbligatorio'
             }), 400
         
+        # View type (opzionale, default='posterior')
+        view_type = request.form.get('view_type', 'posterior')
+        if view_type not in ['posterior', 'lateral']:
+            return jsonify({
+                'status': 'error',
+                'message': 'view_type deve essere "posterior" o "lateral"'
+            }), 400
+        
         try:
             speed = float(request.form['speed'])
             fps = float(request.form['fps'])
@@ -363,7 +508,7 @@ def detect_anomaly():
                 'message': 'Velocità e FPS devono essere numeri validi'
             }), 400
         
-        logger.info(f"📊 Parametri analisi: Velocità={speed} km/h, FPS={fps}")
+        logger.info(f"📊 Parametri analisi: Vista={view_type}, Velocità={speed} km/h, FPS={fps}")
         
         # Carica baseline
         if not os.path.exists(BASELINE_JSON_PATH):
@@ -378,8 +523,16 @@ def detect_anomaly():
         
         baseline_speed = baseline_stats['speed_kmh']
         baseline_fps = baseline_stats['fps']
+        baseline_view_type = baseline_stats.get('view_type', 'posterior')
         
-        logger.info(f"📊 Baseline: Velocità={baseline_speed} km/h, FPS={baseline_fps}")
+        logger.info(f"📊 Baseline: Vista={baseline_view_type}, Velocità={baseline_speed} km/h, FPS={baseline_fps}")
+        
+        # Valida corrispondenza view_type
+        if view_type != baseline_view_type:
+            return jsonify({
+                'status': 'error',
+                'message': f'Il tipo di vista non corrisponde alla baseline. Baseline: {baseline_view_type}, Fornito: {view_type}.'
+            }), 400
         
         # Valida corrispondenza parametri (tolleranza 0.5)
         if abs(speed - baseline_speed) > 0.5:
@@ -397,27 +550,53 @@ def detect_anomaly():
         
         # Processa video
         logger.info("Fase 1: Processing video con PoseEngine...")
-        video_data = engine.process_video(filepath, fps=baseline_fps)
+        video_data = engine.process_video(filepath, fps=baseline_fps, view_type=view_type)
         
         # Calcola Z-Scores
         logger.info("Fase 2: Calcolo Z-Scores...")
         z_scores = engine.calculate_z_scores(video_data, baseline_stats)
         
         # Pulisci video temporaneo
-        if os.path.exists(filepath):
-            os.remove(filepath)
+        safe_remove_file(filepath)
         
         logger.info(f"✅ Analisi completata! Stato: {z_scores['overall_status']}")
         
+        # Prepara URL video con scheletro se disponibile
+        skeleton_video_url = None
+        if video_data.get('skeleton_video_path'):
+            skeleton_path = video_data['skeleton_video_path']
+            if os.path.exists(skeleton_path):
+                skeleton_filename = os.path.basename(skeleton_path)
+                # URL encode il nome del file per gestire caratteri speciali
+                from urllib.parse import quote
+                skeleton_video_url = f'/api/processed_video/{quote(skeleton_filename)}'
+                logger.info(f"📹 Video con scheletro disponibile: {skeleton_filename}")
+                logger.info(f"📹 URL video: {skeleton_video_url}")
+            else:
+                logger.warning(f"⚠ Video scheletro non trovato: {skeleton_path}")
+        
         # Prepara risposta per frontend
-        return jsonify({
+        response_data = {
             'status': 'success',
+            'viewType': view_type,
             'anomaly_level': z_scores['overall_status'],
             'anomaly_color': z_scores['overall_color'],
             'anomaly_score': z_scores['max_z_score'],
-            
-            # Metriche principali
-            'metrics': {
+            'skeleton_video_url': skeleton_video_url,
+            'metrics': {},
+            'charts': {
+                'timeline': list(range(video_data['n_frames']))
+            },
+            'video_info': {
+                'n_frames': video_data['n_frames'],
+                'frames_with_pose': video_data['frames_with_pose'],
+                'fps': video_data['fps'],
+                'duration': video_data['n_frames'] / video_data['fps']
+            }
+        }
+        
+        if view_type == 'posterior':
+            response_data['metrics'] = {
                 'left_knee_valgus': {
                     'value': z_scores['left_knee_valgus']['value'],
                     'z_score': z_scores['left_knee_valgus']['z_score'],
@@ -454,25 +633,61 @@ def detect_anomaly():
                     'baseline_std': baseline_stats['cadence']['std'],
                     'unit': 'spm'
                 }
-            },
-            
-            # Dati per grafici temporali
-            'charts': {
-                'timeline': list(range(video_data['n_frames'])),
+            }
+            response_data['charts'].update({
                 'left_knee_valgus': video_data['left_knee_valgus'],
                 'right_knee_valgus': video_data['right_knee_valgus'],
                 'pelvic_drop': video_data['pelvic_drop'],
-                'cadence': video_data.get('cadence', [])  # Serie temporale della cadenza
-            },
-            
-            # Info video
-            'video_info': {
-                'n_frames': video_data['n_frames'],
-                'frames_with_pose': video_data['frames_with_pose'],
-                'fps': video_data['fps'],
-                'duration': video_data['n_frames'] / video_data['fps']
+                'cadence': video_data.get('cadence', [])
+            })
+        
+        else:  # lateral
+            response_data['metrics'] = {
+                'overstriding': {
+                    'value': z_scores['overstriding']['value'],
+                    'z_score': z_scores['overstriding']['z_score'],
+                    'level': z_scores['overstriding']['level'],
+                    'color': z_scores['overstriding']['color'],
+                    'baseline_mean': baseline_stats['overstriding']['mean'],
+                    'baseline_std': baseline_stats['overstriding']['std'],
+                    'unit': 'm'
+                },
+                'knee_flexion_ic': {
+                    'value': z_scores['knee_flexion_ic']['value'],
+                    'z_score': z_scores['knee_flexion_ic']['z_score'],
+                    'level': z_scores['knee_flexion_ic']['level'],
+                    'color': z_scores['knee_flexion_ic']['color'],
+                    'baseline_mean': baseline_stats['knee_flexion_ic']['mean'],
+                    'baseline_std': baseline_stats['knee_flexion_ic']['std'],
+                    'unit': '°'
+                },
+                'trunk_lean': {
+                    'value': z_scores['trunk_lean']['value'],
+                    'z_score': z_scores['trunk_lean']['z_score'],
+                    'level': z_scores['trunk_lean']['level'],
+                    'color': z_scores['trunk_lean']['color'],
+                    'baseline_mean': baseline_stats['trunk_lean']['mean'],
+                    'baseline_std': baseline_stats['trunk_lean']['std'],
+                    'unit': '°'
+                },
+                'ground_contact_time': {
+                    'value': z_scores['ground_contact_time']['value'],
+                    'z_score': z_scores['ground_contact_time']['z_score'],
+                    'level': z_scores['ground_contact_time']['level'],
+                    'color': z_scores['ground_contact_time']['color'],
+                    'baseline_mean': baseline_stats['ground_contact_time']['mean'],
+                    'baseline_std': baseline_stats['ground_contact_time']['std'],
+                    'unit': 's'
+                }
             }
-        })
+            response_data['charts'].update({
+                'overstriding': video_data['overstriding'],
+                'knee_flexion_ic': video_data['knee_flexion_ic'],
+                'trunk_lean': video_data['trunk_lean'],
+                'ground_contact_time': video_data['ground_contact_time']
+            })
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Errore nell'analisi: {str(e)}", exc_info=True)

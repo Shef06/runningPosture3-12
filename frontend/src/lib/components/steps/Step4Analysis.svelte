@@ -2,6 +2,7 @@
   import { analysisStore } from '../../stores/analysisStore.js';
   
   $: mainFlow = $analysisStore.mainFlow;
+  $: viewType = $analysisStore.viewType;
   $: videoFile = $analysisStore.videoFile;
   $: baselineVideos = $analysisStore.baselineVideos;
   $: speed = $analysisStore.speed;
@@ -18,8 +19,74 @@
       return;
     }
 
-    analysisStore.setAnalyzing(true);
+    // Attiva BaselineUploader per baseline (mostra ingranaggio + progress bar)
+    if (mainFlow === 'baseline') {
+      analysisStore.setAnalyzing(true);
+    }
+
+    analysisStore.setLoading(true);
     analysisStore.clearMessages();
+    
+    try {
+      const formData = new FormData();
+      
+      if (mainFlow === 'baseline') {
+        // Baseline creation
+        baselineVideos.forEach(file => {
+          formData.append('videos', file);
+        });
+        formData.append('view_type', viewType);
+        if (speed) formData.append('speed', speed);
+        formData.append('fps', fps);
+        
+        const response = await fetch('http://localhost:5000/api/create_baseline', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          analysisStore.setResults(data);
+          if (data.baselineRanges) {
+            analysisStore.setBaselineRanges(data.baselineRanges);
+          }
+          analysisStore.setMessage('✅ Baseline creata con successo!');
+          analysisStore.setAnalyzing(false); // Disattiva BaselineUploader
+          // Avanza allo step 7 (risultati) per upload method
+          analysisStore.goToStep(7);
+        } else {
+          analysisStore.setError(data.message || 'Errore nella creazione baseline');
+          analysisStore.setAnalyzing(false); // Disattiva anche in caso di errore
+        }
+      } else {
+        // Video analysis
+        formData.append('video', videoFile);
+        formData.append('view_type', viewType);
+        if (speed) formData.append('speed', speed);
+        formData.append('fps', fps);
+        
+        const response = await fetch('http://localhost:5000/api/detect_anomaly', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          analysisStore.setResults(data);
+          // Avanza allo step 7 (risultati) per upload method
+          analysisStore.goToStep(7);
+        } else {
+          analysisStore.setError(data.message || 'Errore nell\'analisi');
+        }
+      }
+    } catch (error) {
+      analysisStore.setError('Errore di connessione al server: ' + error.message);
+      if (mainFlow === 'baseline') {
+        analysisStore.setAnalyzing(false); // Disattiva in caso di errore
+      }
+    } finally {
+      analysisStore.setLoading(false);
+    }
   }
 </script>
 

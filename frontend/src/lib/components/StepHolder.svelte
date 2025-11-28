@@ -1,17 +1,19 @@
 <script>
   import { analysisStore } from '../stores/analysisStore.js';
-  import Step1MainChoice from './steps/Step1MainChoice.svelte';
-  import Step2VideoMethod from './steps/Step2VideoMethod.svelte';
-  import Step3CameraSetup from './steps/Step3CameraSetup.svelte';
-  import Step3Calibration from './steps/Step3Calibration.svelte';
-  import Step3BaselineUpload from './steps/Step3BaselineUpload.svelte';
-  import Step4Calibration from './steps/Step4Calibration.svelte';
-  import Step4Analysis from './steps/Step4Analysis.svelte';
-  import Step5Analysis from './steps/Step5Analysis.svelte';
-  import Step6Results from './steps/Step6Results.svelte';
+  import MainChoiceStep from './steps/MainChoiceStep.svelte';
+  import ViewSelectionStep from './steps/ViewSelectionStep.svelte';
+  import VideoMethodStep from './steps/VideoMethodStep.svelte';
+  import CameraSetupStep from './steps/CameraSetupStep.svelte';
+  import VideoCalibrationStep from './steps/VideoCalibrationStep.svelte';
+  import BaselineUploadStep from './steps/BaselineUploadStep.svelte';
+  import RecordCalibrationStep from './steps/RecordCalibrationStep.svelte';
+  import AnalysisSummaryStep from './steps/AnalysisSummaryStep.svelte';
+  import RecordAnalysisStep from './steps/RecordAnalysisStep.svelte';
+  import ResultsStep from './steps/ResultsStep.svelte';
   
   $: currentStep = $analysisStore.currentStep;
   $: mainFlow = $analysisStore.mainFlow;
+  $: viewType = $analysisStore.viewType;
   $: videoMethod = $analysisStore.videoMethod;
   $: loading = $analysisStore.loading;
   
@@ -21,53 +23,93 @@
   $: showAnalysisLoading = loading && mainFlow === 'analyze';
   
   function calculateStepInfo(step, flow, method) {
-    if (!flow || !method) {
-      return { current: step, total: 6 };
+    if (!flow) {
+      return { current: step, total: 8 };
+    }
+    
+    if (!method) {
+      return { current: step, total: 8 };
     }
     
     if (method === 'upload') {
+      // Upload: Step 1-6 + risultati (step 7)
+      // Step 1: MainChoice
+      // Step 2: ViewSelection (NUOVO)
+      // Step 3: VideoMethod
+      // Step 4: Upload
+      // Step 5: Analysis
+      // Step 6: (skip, va direttamente a 7)
+      // Step 7: Results
       const stepMap = {
-        1: { current: 1, total: 5 },
-        2: { current: 2, total: 5 },
-        3: { current: 3, total: 5 },
-        4: { current: 4, total: 5 },
-        6: { current: 5, total: 5 }
+        1: { current: 1, total: 7 },
+        2: { current: 2, total: 7 },
+        3: { current: 3, total: 7 },
+        4: { current: 4, total: 7 },
+        5: { current: 5, total: 7 },
+        6: { current: 6, total: 7 },
+        7: { current: 7, total: 7 } // Risultati
       };
-      return stepMap[step] || { current: step, total: 5 };
+      return stepMap[step] || { current: step, total: 7 };
     }
     
     if (method === 'record') {
-      return { current: step, total: 6 };
+      // Record: tutti gli 8 step
+      // Step 1: MainChoice
+      // Step 2: ViewSelection (NUOVO)
+      // Step 3: VideoMethod
+      // Step 4: CameraSetup
+      // Step 5: Calibration
+      // Step 6: Analysis (record)
+      // Step 7: (skip)
+      // Step 8: Results
+      return { current: step, total: 8 };
     }
     
-    return { current: step, total: 6 };
+    return { current: step, total: 8 };
   }
   
   function goBack() {
-    if (videoMethod === 'upload' && currentStep === 6) {
-      analysisStore.goToStep(4);
+    // Se siamo ai risultati (step 7) con upload, torna a step 6
+    if (videoMethod === 'upload' && currentStep === 7) {
+      analysisStore.goToStep(6);
+      return;
+    }
+    // Se siamo ai risultati (step 8) con record, torna a step 7
+    if (videoMethod === 'record' && currentStep === 8) {
+      analysisStore.goToStep(7);
       return;
     }
     analysisStore.prevStep();
   }
   
   function getStepComponent() {
-    if (currentStep === 1) return Step1MainChoice;
-    if (currentStep === 2) return Step2VideoMethod;
-    if (currentStep === 3) {
-      if (videoMethod === 'record') return Step3CameraSetup;
+    if (currentStep === 1) return MainChoiceStep;
+    if (currentStep === 2) return ViewSelectionStep;
+    if (currentStep === 3) return VideoMethodStep;
+    if (currentStep === 4) {
+      if (videoMethod === 'record') return CameraSetupStep;
       else {
-        if (mainFlow === 'baseline') return Step3BaselineUpload;
-        else return Step3Calibration;
+        if (mainFlow === 'baseline') return BaselineUploadStep;
+        else return VideoCalibrationStep;
       }
     }
-    if (currentStep === 4) {
-      if (videoMethod === 'record') return Step4Calibration;
-      else return Step4Analysis;
+    if (currentStep === 5) {
+      if (videoMethod === 'record') {
+        return RecordCalibrationStep;
+      } else {
+        // Upload method
+        return AnalysisSummaryStep;
+      }
     }
-    if (currentStep === 5) return Step5Analysis;
-    if (currentStep === 6) return Step6Results;
-    return Step1MainChoice;
+    if (currentStep === 6) {
+      // Solo per recording
+      if (videoMethod === 'record') return RecordAnalysisStep;
+      // Per upload, vai direttamente ai risultati (skip questo step)
+      else return ResultsStep;
+    }
+    if (currentStep === 7) return ResultsStep; // Upload results
+    if (currentStep === 8) return ResultsStep; // Record results
+    return MainChoiceStep;
   }
   
   function restartFlow() {

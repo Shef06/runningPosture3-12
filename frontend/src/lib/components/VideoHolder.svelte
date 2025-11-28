@@ -17,6 +17,26 @@
   $: baselineVideos = $analysisStore.baselineVideos;
   $: baselineVideoUrls = $analysisStore.baselineVideoUrls;
   $: isAnalyzing = $analysisStore.isAnalyzing;
+  $: results = $analysisStore.results;
+  
+  // URL del backend (stesso pattern usato negli altri componenti)
+  const API_BASE_URL = 'http://localhost:5000';
+  
+  $: skeletonVideoUrl = results?.skeleton_video_url 
+    ? `${API_BASE_URL}${results.skeleton_video_url}` 
+    : null;
+  
+  // Debug: log quando skeletonVideoUrl cambia
+  $: if (skeletonVideoUrl) {
+    console.log('📹 Video con scheletro disponibile:', skeletonVideoUrl);
+    // Verifica che l'URL sia valido
+    try {
+      const url = new URL(skeletonVideoUrl);
+      console.log('📹 URL valido:', url.href);
+    } catch (e) {
+      console.error('❌ URL non valido:', skeletonVideoUrl, e);
+    }
+  }
   
   let currentVideoIndex = 0;
   let videoAnalyzerRef;
@@ -137,8 +157,77 @@
 
 <div class="video-holder">
   <div class="video-container">
-    {#if mainFlow === 'baseline' && videoMethod === 'upload' && baselineVideos.length === 5 && isAnalyzing}
-      <BaselineUploader />
+    {#if skeletonVideoUrl}
+      <!-- Video con scheletro dai risultati - PRIORITÀ ALTA -->
+      <div class="skeleton-video-wrapper">
+        <video 
+          controls 
+          class="video-display skeleton-video"
+          src={skeletonVideoUrl}
+          type="video/mp4"
+          preload="metadata"
+          on:error={(e) => {
+            const video = e.target;
+            const error = video.error;
+            let errorMsg = 'Errore nel caricamento del video con scheletro';
+            
+            if (error) {
+              switch(error.code) {
+                case error.MEDIA_ERR_ABORTED:
+                  errorMsg = 'Caricamento video interrotto';
+                  break;
+                case error.MEDIA_ERR_NETWORK:
+                  errorMsg = 'Errore di rete durante il caricamento del video';
+                  break;
+                case error.MEDIA_ERR_DECODE:
+                  errorMsg = 'Il video non può essere decodificato (codec non supportato)';
+                  break;
+                case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                  errorMsg = 'Formato video non supportato dal browser';
+                  break;
+                default:
+                  errorMsg = `Errore video (codice: ${error.code})`;
+              }
+            }
+            
+            console.error('❌ Errore nel caricamento video:', {
+              url: skeletonVideoUrl,
+              errorCode: error?.code,
+              errorMessage: errorMsg,
+              event: e
+            });
+            analysisStore.setError(errorMsg);
+          }}
+          on:loadeddata={() => {
+            console.log('✅ Video con scheletro caricato correttamente:', skeletonVideoUrl);
+          }}
+          on:canplay={() => {
+            console.log('✅ Video pronto per la riproduzione:', skeletonVideoUrl);
+          }}
+        >
+          Il tuo browser non supporta la riproduzione video.
+        </video>
+        <div class="skeleton-video-label">
+          <span class="label-icon">🎬</span>
+          <span class="label-text">Video con Analisi Scheletro</span>
+        </div>
+      </div>
+    
+    {:else if mainFlow === 'baseline' && videoMethod === 'upload' && baselineVideos.length === 5 && isAnalyzing}
+      <!-- Mostra video durante l'elaborazione baseline -->
+      <div class="baseline-processing-wrapper">
+        <div class="baseline-video-preview">
+          <video 
+            src={baselineVideoUrls[currentVideoIndex]} 
+            controls 
+            class="video-display"
+            muted
+          >
+            <track kind="captions" />
+          </video>
+        </div>
+        <BaselineUploader />
+      </div>
     
     {:else if mainFlow === 'analyze' && videoUrl && videoMethod === 'upload'}
       <VideoAnalyzer 
@@ -407,5 +496,75 @@
   
   .thumbnail-item.active .thumbnail-number {
     background: #3b82f6;
+  }
+
+  /* Skeleton Video */
+  .skeleton-video-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .skeleton-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .skeleton-video-label {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    backdrop-filter: blur(4px);
+    z-index: 10;
+  }
+
+  .label-icon {
+    font-size: 1.1rem;
+  }
+
+  .label-text {
+    font-weight: 500;
+  }
+
+  /* Baseline Processing Wrapper */
+  .baseline-processing-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .baseline-video-preview {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    opacity: 0.3; /* Video in background, semi-trasparente */
+  }
+
+  .baseline-video-preview video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* BaselineUploader sovrapposto */
+  .baseline-processing-wrapper :global(.uploader-container) {
+    position: relative;
+    z-index: 2;
+    background: rgba(15, 23, 42, 0.85); /* Più trasparente per vedere il video dietro */
   }
 </style>
