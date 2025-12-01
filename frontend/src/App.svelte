@@ -47,11 +47,6 @@
           <p class="subtitle">AI Biomechanical Analysis</p>
         </div>
       </div>
-      <div class="header-badges">
-        <span class="badge">AI</span>
-        <span class="badge">Real-time</span>
-        <span class="badge">3D</span>
-      </div>
     </div>
   </header>
   

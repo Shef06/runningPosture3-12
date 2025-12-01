@@ -69,16 +69,41 @@
   }
   
   function goBack() {
-    // Se siamo ai risultati (step 7) con upload, torna a step 6
+    // Se siamo ai risultati (step 7) con upload, torna a step 6 e pulisci risultati
     if (videoMethod === 'upload' && currentStep === 7) {
+      analysisStore.clearResults();
       analysisStore.goToStep(6);
       return;
     }
-    // Se siamo ai risultati (step 8) con record, torna a step 7
+    // Se siamo ai risultati (step 8) con record, torna a step 7 e pulisci risultati
     if (videoMethod === 'record' && currentStep === 8) {
+      analysisStore.clearResults();
       analysisStore.goToStep(7);
       return;
     }
+    
+    // Pulisci lo stato in base allo step corrente prima di tornare indietro
+    if (currentStep === 6) {
+      // Torna da analisi: pulisci risultati
+      analysisStore.clearResults();
+    } else if (currentStep === 5) {
+      // Torna da calibrazione: pulisci dati calibrazione
+      analysisStore.clearCalibration();
+    } else if (currentStep === 4) {
+      // Torna da upload/record: pulisci video
+      analysisStore.clearVideoData();
+      // Ferma la camera se attiva
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('stopcamera'));
+      }
+    } else if (currentStep === 3) {
+      // Torna da metodo video: pulisci metodo
+      analysisStore.clearVideoMethod();
+    } else if (currentStep === 2) {
+      // Torna da view selection: pulisci view type
+      analysisStore.clearViewType();
+    }
+    
     analysisStore.prevStep();
   }
   

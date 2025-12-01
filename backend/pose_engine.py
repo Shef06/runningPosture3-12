@@ -226,6 +226,40 @@ class PoseEngine:
         
         return valgus
     
+    def _calculate_symmetry(self, left: float, right: float) -> float:
+        """
+        Calcola l'indice di simmetria (LSI) tra due valori
+        Formula: symmetry = 100 - (abs(left - right) / ((left + right) / 2) * 100)
+        100% = perfettamente simmetrici, 0% = totalmente diversi
+        
+        Args:
+            left: Valore sinistro
+            right: Valore destro
+            
+        Returns:
+            Percentuale di simmetria (0-100)
+        """
+        # Evita divisione per zero
+        if abs(left) < 1e-6 and abs(right) < 1e-6:
+            return 100.0  # Entrambi zero = perfettamente simmetrici
+        
+        # Calcola la media dei valori assoluti (per gestire valori negativi)
+        # Usa la media aritmetica dei valori assoluti per normalizzare
+        mean_value = (abs(left) + abs(right)) / 2.0
+        
+        if mean_value < 1e-6:
+            return 100.0  # Se la media è zero, considera simmetrici
+        
+        # Calcola la differenza assoluta normalizzata
+        diff_normalized = abs(left - right) / mean_value
+        
+        # Converti in percentuale di simmetria
+        # 100% = identici, 0% = totalmente diversi
+        symmetry = 100.0 - (diff_normalized * 100.0)
+        
+        # Limita tra 0 e 100
+        return max(0.0, min(100.0, symmetry))
+    
     def _get_overstriding(self, ankle: np.ndarray, hip: np.ndarray) -> float:
         """
         Calcola l'overstriding (distanza orizzontale tra caviglia e anca al contatto iniziale)
@@ -827,9 +861,19 @@ class PoseEngine:
             window_frames = int(window_seconds * fps)
             cadence_series = self._calculate_cadence_series(left_peaks, right_peaks, frame_count, fps, window_frames)
             
+            # Calcola simmetria knee valgus frame-per-frame
+            knee_valgus_symmetry_series = []
+            for i in range(len(left_knee_valgus_series)):
+                symmetry = self._calculate_symmetry(left_knee_valgus_series[i], right_knee_valgus_series[i])
+                knee_valgus_symmetry_series.append(symmetry)
+            
+            knee_valgus_symmetry_arr = np.array(knee_valgus_symmetry_series)
+            avg_knee_valgus_symmetry = float(np.mean(knee_valgus_symmetry_arr))
+            
             logger.info(f"Cadenza rilevata: SX={left_cadence:.1f} spm, DX={right_cadence:.1f} spm, Media={avg_cadence:.1f} spm")
             logger.info(f"Valgismo Ginocchio SX: μ={np.mean(left_knee_valgus_arr):.2f}°, σ={np.std(left_knee_valgus_arr):.2f}°")
             logger.info(f"Valgismo Ginocchio DX: μ={np.mean(right_knee_valgus_arr):.2f}°, σ={np.std(right_knee_valgus_arr):.2f}°")
+            logger.info(f"Simmetria Knee Valgus: μ={avg_knee_valgus_symmetry:.2f}%")
             logger.info(f"Caduta Pelvica: μ={np.mean(pelvic_drop_arr):.2f}°, σ={np.std(pelvic_drop_arr):.2f}°")
             
             result = {
@@ -841,6 +885,8 @@ class PoseEngine:
                 'left_cadence': float(left_cadence),
                 'right_cadence': float(right_cadence),
                 'avg_cadence': float(avg_cadence),
+                'knee_valgus_symmetry': knee_valgus_symmetry_arr.tolist(),
+                'avg_knee_valgus_symmetry': avg_knee_valgus_symmetry,
                 'fps': float(fps),
                 'n_frames': frame_count,
                 'frames_with_pose': frames_with_pose,
@@ -951,6 +997,9 @@ class PoseEngine:
         Crea statistiche baseline da multipli video processati
         Calcola Media, Deviazione Standard, Min e Max per ogni metrica
         
+        IMPORTANTE: La StdDev viene calcolata tra le medie dei video (non aggregata)
+        per rendere il confronto più robusto e meno sensibile a piccole variazioni.
+        
         Args:
             videos_data: Lista di dizionari restituiti da process_video()
             
@@ -985,25 +1034,59 @@ class PoseEngine:
         view_type = videos_data[0].get('view_type', 'posterior')
         logger.info(f"Vista: {view_type}")
         
-        # Aggrega tutti i dati in base al tipo di vista
+        # Soglie minime per StdDev (per evitare StdDev troppo piccole)
+        MIN_STD_THRESHOLDS = {
+            'left_knee_valgus': 0.5,      # 0.5° minimo
+            'right_knee_valgus': 0.5,     # 0.5° minimo
+            'pelvic_drop': 0.3,           # 0.3° minimo
+            'cadence': 2.0,               # 2 spm minimo
+            'knee_valgus_symmetry': 1.0,  # 1% minimo
+            'overstriding': 0.005,        # 0.005 m minimo
+            'knee_flexion_ic': 1.0,       # 1.0° minimo
+            'trunk_lean': 0.5,            # 0.5° minimo
+            'ground_contact_time': 0.01   # 0.01s (10ms) minimo
+        }
+        
+        # Aggrega tutti i dati per calcolare Min/Max (per i grafici)
+        # E raccoglie le medie dei video per calcolare StdDev (per Z-Score)
         if view_type == 'posterior':
-            all_left_valgus = []
-            all_right_valgus = []
-            all_pelvic_drop = []
-            all_cadence = []
+            all_left_valgus = []  # Per Min/Max
+            all_right_valgus = []  # Per Min/Max
+            all_pelvic_drop = []  # Per Min/Max
+            all_cadence = []  # Per Min/Max
+            all_knee_valgus_symmetry = []  # Per Min/Max
+            
+            # Array per le medie dei video (per calcolare StdDev tra video)
+            video_left_valgus_means = []
+            video_right_valgus_means = []
+            video_pelvic_drop_means = []
+            video_cadence_means = []
+            video_symmetry_means = []
         else:  # lateral
-            all_overstriding = []
-            all_knee_flexion_ic = []
-            all_trunk_lean = []
-            all_gct = []
+            all_overstriding = []  # Per Min/Max
+            all_knee_flexion_ic = []  # Per Min/Max
+            all_trunk_lean = []  # Per Min/Max
+            all_gct = []  # Per Min/Max (ma per GCT usiamo già le medie)
+            
+            # Array per le medie dei video (per calcolare StdDev tra video)
+            video_overstriding_means = []
+            video_knee_flexion_ic_means = []
+            video_trunk_lean_means = []
+            video_gct_means = []
         
         total_frames = 0
         
         for video_data in videos_data:
             if view_type == 'posterior':
+                # Aggrega tutti i frame per Min/Max
                 all_left_valgus.extend(video_data['left_knee_valgus'])
                 all_right_valgus.extend(video_data['right_knee_valgus'])
                 all_pelvic_drop.extend(video_data['pelvic_drop'])
+                
+                # Calcola medie del video per StdDev tra video
+                video_left_valgus_means.append(np.mean(video_data['left_knee_valgus']))
+                video_right_valgus_means.append(np.mean(video_data['right_knee_valgus']))
+                video_pelvic_drop_means.append(np.mean(video_data['pelvic_drop']))
                 
                 # Per la cadenza, usa la media della serie temporale
                 cadence_series = video_data.get('cadence', [])
@@ -1012,55 +1095,96 @@ class PoseEngine:
                     if len(cadence_series_filtered) > 0:
                         cadence_mean = np.mean(cadence_series_filtered)
                         all_cadence.append(cadence_mean)
+                        video_cadence_means.append(cadence_mean)
                     else:
-                        all_cadence.append(video_data.get('avg_cadence', 0.0))
+                        avg_cad = video_data.get('avg_cadence', 0.0)
+                        all_cadence.append(avg_cad)
+                        video_cadence_means.append(avg_cad)
                 else:
-                    all_cadence.append(video_data.get('avg_cadence', 0.0))
+                    avg_cad = video_data.get('avg_cadence', 0.0)
+                    all_cadence.append(avg_cad)
+                    video_cadence_means.append(avg_cad)
+                
+                # Per la simmetria, usa la serie temporale se disponibile, altrimenti calcola dalla media
+                symmetry_series = video_data.get('knee_valgus_symmetry', [])
+                if symmetry_series and len(symmetry_series) > 0:
+                    all_knee_valgus_symmetry.extend(symmetry_series)
+                    video_symmetry_means.append(np.mean(symmetry_series))
+                else:
+                    # Calcola simmetria dalla media se la serie non è disponibile
+                    left_mean = np.mean(video_data['left_knee_valgus'])
+                    right_mean = np.mean(video_data['right_knee_valgus'])
+                    symmetry = self._calculate_symmetry(left_mean, right_mean)
+                    all_knee_valgus_symmetry.append(symmetry)
+                    video_symmetry_means.append(symmetry)
             
             else:  # lateral
+                # Aggrega tutti i frame per Min/Max
                 all_overstriding.extend(video_data['overstriding'])
                 all_knee_flexion_ic.extend(video_data['knee_flexion_ic'])
                 all_trunk_lean.extend(video_data['trunk_lean'])
                 
-                # Per GCT, usa la media
+                # Calcola medie del video per StdDev tra video
+                video_overstriding_means.append(np.mean(video_data['overstriding']))
+                video_knee_flexion_ic_means.append(np.mean(video_data['knee_flexion_ic']))
+                video_trunk_lean_means.append(np.mean(video_data['trunk_lean']))
+                
+                # Per GCT, usa la media (già calcolata)
                 avg_gct = video_data.get('avg_gct', 0.0)
                 all_gct.append(avg_gct)
+                video_gct_means.append(avg_gct)
             
             total_frames += video_data['n_frames']
         
         # Calcola statistiche in base al tipo di vista
         if view_type == 'posterior':
-            # Converti in numpy array
+            # Converti in numpy array per Min/Max
             all_left_valgus = np.array(all_left_valgus)
             all_right_valgus = np.array(all_right_valgus)
             all_pelvic_drop = np.array(all_pelvic_drop)
             all_cadence = np.array(all_cadence)
+            all_knee_valgus_symmetry = np.array(all_knee_valgus_symmetry)
             
+            # Converti medie dei video in numpy array per StdDev
+            video_left_valgus_means = np.array(video_left_valgus_means)
+            video_right_valgus_means = np.array(video_right_valgus_means)
+            video_pelvic_drop_means = np.array(video_pelvic_drop_means)
+            video_cadence_means = np.array(video_cadence_means)
+            video_symmetry_means = np.array(video_symmetry_means)
+            
+            # Calcola Mean e StdDev usando le medie dei video (più robusto)
+            # Min e Max rimangono su tutti i frame aggregati (per i grafici)
             baseline_stats = {
                 'view_type': 'posterior',
                 'left_knee_valgus': {
-                    'mean': float(np.mean(all_left_valgus)),
-                    'std': float(np.std(all_left_valgus)),
+                    'mean': float(np.mean(all_left_valgus)),  # Media aggregata (per grafici)
+                    'std': float(max(np.std(video_left_valgus_means), MIN_STD_THRESHOLDS['left_knee_valgus'])),  # StdDev tra video + minimo
                     'min': float(np.min(all_left_valgus)),
                     'max': float(np.max(all_left_valgus))
                 },
                 'right_knee_valgus': {
                     'mean': float(np.mean(all_right_valgus)),
-                    'std': float(np.std(all_right_valgus)),
+                    'std': float(max(np.std(video_right_valgus_means), MIN_STD_THRESHOLDS['right_knee_valgus'])),
                     'min': float(np.min(all_right_valgus)),
                     'max': float(np.max(all_right_valgus))
                 },
                 'pelvic_drop': {
                     'mean': float(np.mean(all_pelvic_drop)),
-                    'std': float(np.std(all_pelvic_drop)),
+                    'std': float(max(np.std(video_pelvic_drop_means), MIN_STD_THRESHOLDS['pelvic_drop'])),
                     'min': float(np.min(all_pelvic_drop)),
                     'max': float(np.max(all_pelvic_drop))
                 },
                 'cadence': {
                     'mean': float(np.mean(all_cadence)),
-                    'std': float(np.std(all_cadence)),
+                    'std': float(max(np.std(video_cadence_means), MIN_STD_THRESHOLDS['cadence'])),
                     'min': float(np.min(all_cadence)),
                     'max': float(np.max(all_cadence))
+                },
+                'knee_valgus_symmetry': {
+                    'mean': float(np.mean(all_knee_valgus_symmetry)),
+                    'std': float(max(np.std(video_symmetry_means), MIN_STD_THRESHOLDS['knee_valgus_symmetry'])),
+                    'min': float(np.min(all_knee_valgus_symmetry)),
+                    'max': float(np.max(all_knee_valgus_symmetry))
                 },
                 'n_videos': len(videos_data),
                 'total_frames': total_frames
@@ -1069,39 +1193,48 @@ class PoseEngine:
             logger.info("=== Statistiche Baseline (Vista Posteriore) ===")
             logger.info(f"Valgismo Ginocchio SX: μ={baseline_stats['left_knee_valgus']['mean']:.2f}° ± {baseline_stats['left_knee_valgus']['std']:.2f}°")
             logger.info(f"Valgismo Ginocchio DX: μ={baseline_stats['right_knee_valgus']['mean']:.2f}° ± {baseline_stats['right_knee_valgus']['std']:.2f}°")
+            logger.info(f"Simmetria Knee Valgus: μ={baseline_stats['knee_valgus_symmetry']['mean']:.2f}% ± {baseline_stats['knee_valgus_symmetry']['std']:.2f}%")
             logger.info(f"Caduta Pelvica: μ={baseline_stats['pelvic_drop']['mean']:.2f}° ± {baseline_stats['pelvic_drop']['std']:.2f}°")
             logger.info(f"Cadenza: μ={baseline_stats['cadence']['mean']:.1f} ± {baseline_stats['cadence']['std']:.1f} spm")
         
         else:  # lateral
-            # Converti in numpy array
+            # Converti in numpy array per Min/Max
             all_overstriding = np.array(all_overstriding)
             all_knee_flexion_ic = np.array(all_knee_flexion_ic)
             all_trunk_lean = np.array(all_trunk_lean)
             all_gct = np.array(all_gct)
             
+            # Converti medie dei video in numpy array per StdDev
+            video_overstriding_means = np.array(video_overstriding_means)
+            video_knee_flexion_ic_means = np.array(video_knee_flexion_ic_means)
+            video_trunk_lean_means = np.array(video_trunk_lean_means)
+            video_gct_means = np.array(video_gct_means)
+            
+            # Calcola Mean e StdDev usando le medie dei video (più robusto)
+            # Min e Max rimangono su tutti i frame aggregati (per i grafici)
             baseline_stats = {
                 'view_type': 'lateral',
                 'overstriding': {
-                    'mean': float(np.mean(all_overstriding)),
-                    'std': float(np.std(all_overstriding)),
+                    'mean': float(np.mean(all_overstriding)),  # Media aggregata (per grafici)
+                    'std': float(max(np.std(video_overstriding_means), MIN_STD_THRESHOLDS['overstriding'])),  # StdDev tra video + minimo
                     'min': float(np.min(all_overstriding)),
                     'max': float(np.max(all_overstriding))
                 },
                 'knee_flexion_ic': {
                     'mean': float(np.mean(all_knee_flexion_ic)),
-                    'std': float(np.std(all_knee_flexion_ic)),
+                    'std': float(max(np.std(video_knee_flexion_ic_means), MIN_STD_THRESHOLDS['knee_flexion_ic'])),
                     'min': float(np.min(all_knee_flexion_ic)),
                     'max': float(np.max(all_knee_flexion_ic))
                 },
                 'trunk_lean': {
                     'mean': float(np.mean(all_trunk_lean)),
-                    'std': float(np.std(all_trunk_lean)),
+                    'std': float(max(np.std(video_trunk_lean_means), MIN_STD_THRESHOLDS['trunk_lean'])),
                     'min': float(np.min(all_trunk_lean)),
                     'max': float(np.max(all_trunk_lean))
                 },
                 'ground_contact_time': {
-                    'mean': float(np.mean(all_gct)),
-                    'std': float(np.std(all_gct)),
+                    'mean': float(np.mean(all_gct)),  # Media delle medie (già calcolata)
+                    'std': float(max(np.std(video_gct_means), MIN_STD_THRESHOLDS['ground_contact_time'])),  # StdDev tra video + minimo
                     'min': float(np.min(all_gct)),
                     'max': float(np.max(all_gct))
                 },
@@ -1188,6 +1321,15 @@ class PoseEngine:
                 cadence_value = video_data.get('avg_cadence', 0.0)
                 logger.warning(f"  Cadenza: serie temporale non disponibile, usando avg_cadence = {cadence_value:.1f} spm")
             
+            # Per la simmetria, usa la media della serie temporale se disponibile, altrimenti calcola
+            symmetry_value = video_data.get('avg_knee_valgus_symmetry', None)
+            if symmetry_value is None:
+                # Calcola simmetria dalla media se non disponibile
+                symmetry_value = self._calculate_symmetry(left_valgus_mean, right_valgus_mean)
+                logger.info(f"  Simmetria: calcolata dalla media = {symmetry_value:.2f}%")
+            else:
+                logger.info(f"  Simmetria: usando avg_knee_valgus_symmetry = {symmetry_value:.2f}%")
+            
             # Calcola Z-scores
             z_left_valgus = (left_valgus_mean - baseline_stats['left_knee_valgus']['mean']) / \
                             (baseline_stats['left_knee_valgus']['std'] + 1e-6)
@@ -1198,14 +1340,26 @@ class PoseEngine:
             z_cadence = (cadence_value - baseline_stats['cadence']['mean']) / \
                         (baseline_stats['cadence']['std'] + 1e-6)
             
+            # Z-score per simmetria (usa valore negativo perché simmetria più alta è meglio)
+            # Per la simmetria, un valore più basso è peggio, quindi invertiamo il segno
+            if 'knee_valgus_symmetry' in baseline_stats:
+                z_symmetry = (symmetry_value - baseline_stats['knee_valgus_symmetry']['mean']) / \
+                            (baseline_stats['knee_valgus_symmetry']['std'] + 1e-6)
+                # Per la simmetria, un valore più basso è peggio, quindi consideriamo il valore negativo
+                # Se la simmetria è più bassa della baseline, è un problema
+                z_symmetry = -z_symmetry  # Invertiamo perché simmetria più alta = meglio
+            else:
+                z_symmetry = 0.0
+            
             level_left, color_left = get_level(z_left_valgus)
             level_right, color_right = get_level(z_right_valgus)
             level_pelvic, color_pelvic = get_level(z_pelvic_drop)
             level_cadence, color_cadence = get_level(z_cadence)
+            level_symmetry, color_symmetry = get_level(z_symmetry)
             
             # Determina stato generale
             all_z_scores = [abs(z_left_valgus), abs(z_right_valgus), 
-                           abs(z_pelvic_drop), abs(z_cadence)]
+                           abs(z_pelvic_drop), abs(z_cadence), abs(z_symmetry)]
             max_z = max(all_z_scores)
             
             if max_z < 1.0:
@@ -1220,6 +1374,7 @@ class PoseEngine:
             
             logger.info(f"Z-Score Valgismo SX: {z_left_valgus:.2f} -> {level_left}")
             logger.info(f"Z-Score Valgismo DX: {z_right_valgus:.2f} -> {level_right}")
+            logger.info(f"Z-Score Simmetria Knee Valgus: {z_symmetry:.2f} -> {level_symmetry}")
             logger.info(f"Z-Score Caduta Pelvica: {z_pelvic_drop:.2f} -> {level_pelvic}")
             logger.info(f"Z-Score Cadenza: {z_cadence:.2f} -> {level_cadence}")
             logger.info(f"Stato Generale: {overall_status}")
@@ -1237,6 +1392,12 @@ class PoseEngine:
                     'z_score': float(z_right_valgus),
                     'level': level_right,
                     'color': color_right
+                },
+                'knee_valgus_symmetry': {
+                    'value': float(symmetry_value),
+                    'z_score': float(z_symmetry),
+                    'level': level_symmetry,
+                    'color': color_symmetry
                 },
                 'pelvic_drop': {
                     'value': float(pelvic_drop_mean),

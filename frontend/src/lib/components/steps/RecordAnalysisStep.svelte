@@ -18,7 +18,29 @@
   }
   
   async function startAnalysis() {
-    if (!recordedBlob) return;
+    if (!recordedBlob) {
+      analysisStore.setError('Nessun video registrato');
+      return;
+    }
+    
+    // Valida parametri obbligatori
+    const speedNum = typeof speed === 'string' ? parseFloat(speed) : speed;
+    const fpsNum = typeof fps === 'string' ? parseFloat(fps) : fps;
+    
+    if (!speedNum || isNaN(speedNum) || speedNum <= 0 || speedNum > 50) {
+      analysisStore.setError('Velocità del tapis roulant è obbligatoria e deve essere tra 0.1 e 50 km/h');
+      return;
+    }
+    
+    if (!fpsNum || isNaN(fpsNum) || fpsNum <= 0 || fpsNum > 240) {
+      analysisStore.setError('FPS del video è obbligatorio e deve essere tra 15 e 240');
+      return;
+    }
+    
+    if (!viewType) {
+      analysisStore.setError('Tipo di vista non selezionato');
+      return;
+    }
     
     analysisStore.setLoading(true);
     analysisStore.clearMessages();
@@ -36,8 +58,8 @@
         formData.append('videos', file);
         formData.append('videos', file);
         formData.append('view_type', viewType);
-        if (speed) formData.append('speed', speed);
-        formData.append('fps', fps);
+        formData.append('speed', speedNum.toString());
+        formData.append('fps', fpsNum.toString());
         
         const response = await fetch('http://localhost:5000/api/create_baseline', {
           method: 'POST',
@@ -77,8 +99,8 @@
         // Analisi video
         formData.append('video', file);
         formData.append('view_type', viewType);
-        if (speed) formData.append('speed', speed);
-        formData.append('fps', fps);
+        formData.append('speed', speedNum.toString());
+        formData.append('fps', fpsNum.toString());
         
         const response = await fetch('http://localhost:5000/api/detect_anomaly', {
           method: 'POST',

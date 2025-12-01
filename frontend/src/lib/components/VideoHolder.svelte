@@ -134,15 +134,18 @@
     const handleChangeCamera = (e) => changeCamera(e.detail);
     const handleStartRecording = () => startRecording();
     const handleStopRecording = () => stopRecording();
+    const handleStopCamera = () => cleanup();
     
     window.addEventListener('changecamera', handleChangeCamera);
     window.addEventListener('startrecording', handleStartRecording);
     window.addEventListener('stoprecording', handleStopRecording);
+    window.addEventListener('stopcamera', handleStopCamera);
     
     return () => {
       window.removeEventListener('changecamera', handleChangeCamera);
       window.removeEventListener('startrecording', handleStartRecording);
       window.removeEventListener('stoprecording', handleStopRecording);
+      window.removeEventListener('stopcamera', handleStopCamera);
     };
   });
 

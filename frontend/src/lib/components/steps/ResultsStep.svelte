@@ -49,6 +49,21 @@
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   });
+
+  // Stato per salvataggio (non utilizzato al momento)
+  let isSaving = false;
+
+  // Funzione per salvare baseline (non funzionante al momento)
+  function saveBaseline() {
+    // Funzionalità disabilitata - da implementare in futuro
+    console.log('Salvataggio baseline - funzionalità non ancora implementata');
+  }
+
+  // Funzione per salvare analisi (non funzionante al momento)
+  function saveAnalysis() {
+    // Funzionalità disabilitata - da implementare in futuro
+    console.log('Salvataggio analisi - funzionalità non ancora implementata');
+  }
 </script>
 
 <div class="step-container">
@@ -107,6 +122,26 @@
                   <div class="stat-row muted">
                     <span class="label">Range:</span>
                     <span class="value">{formatVal(results.baselineRanges.rightKneeValgus.min)} - {formatVal(results.baselineRanges.rightKneeValgus.max)}°</span>
+                  </div>
+                </div>
+              </div>
+              {/if}
+              
+              {#if results.baselineRanges.kneeValgusSymmetry}
+              <div class="metric-card compact symmetry-card">
+                <h5>⚖️ Simmetria Knee Valgus</h5>
+                <div class="baseline-stats">
+                  <div class="stat-row">
+                    <span class="label">Media:</span>
+                    <span class="value">{formatVal(results.baselineRanges.kneeValgusSymmetry.mean, 1)}%</span>
+                  </div>
+                  <div class="stat-row">
+                    <span class="label">± StdDev:</span>
+                    <span class="value">{formatVal(results.baselineRanges.kneeValgusSymmetry.std, 1)}%</span>
+                  </div>
+                  <div class="stat-row muted">
+                    <span class="label">Range:</span>
+                    <span class="value">{formatVal(results.baselineRanges.kneeValgusSymmetry.min, 1)} - {formatVal(results.baselineRanges.kneeValgusSymmetry.max, 1)}%</span>
                   </div>
                 </div>
               </div>
@@ -325,6 +360,40 @@
               </div>
               {/if}
               
+              <!-- Simmetria Knee Valgus -->
+              {#if results.metrics.knee_valgus_symmetry}
+              <div class="metric-card analysis symmetry-card" style="border-left: 3px solid {results.metrics.knee_valgus_symmetry.color}">
+                <div class="metric-header">
+                  <h5>⚖️ Simmetria Knee Valgus</h5>
+                  <span class="level-badge-small" style="background: {results.metrics.knee_valgus_symmetry.color}">
+                    {results.metrics.knee_valgus_symmetry.level}
+                  </span>
+                </div>
+                <div class="symmetry-content">
+                  <div class="symmetry-value">
+                    <span class="symmetry-percentage">{formatVal(results.metrics.knee_valgus_symmetry.value, 1)}%</span>
+                    <span class="symmetry-label">Indice di Simmetria (LSI)</span>
+                  </div>
+                  <div class="symmetry-progress-bar">
+                    <div 
+                      class="symmetry-progress-fill" 
+                      style="width: {Math.min(100, Math.max(0, results.metrics.knee_valgus_symmetry.value))}%; background: {results.metrics.knee_valgus_symmetry.color}"
+                    ></div>
+                  </div>
+                  <div class="metric-comparison">
+                    <div class="comp-row">
+                      <span class="label">Baseline:</span>
+                      <span class="value baseline">{formatVal(results.metrics.knee_valgus_symmetry.baseline_mean, 1)} ± {formatVal(results.metrics.knee_valgus_symmetry.baseline_std, 1)}%</span>
+                    </div>
+                    <div class="comp-row">
+                      <span class="label">Z-Score:</span>
+                      <span class="value z-score" style="color: {results.metrics.knee_valgus_symmetry.color}">{formatVal(results.metrics.knee_valgus_symmetry.z_score, 2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/if}
+              
               <!-- Caduta Pelvica -->
               {#if results.metrics.pelvic_drop}
               <div class="metric-card analysis" style="border-left: 3px solid {results.metrics.pelvic_drop.color}">
@@ -537,6 +606,36 @@
             </div>
             {/if}
             
+            {#if results.charts.knee_valgus_symmetry}
+            <div class="chart-wrapper">
+              <h5>Simmetria Knee Valgus</h5>
+              <AnalysisChart 
+                data={results.charts.knee_valgus_symmetry} 
+                labels={results.charts.timeline} 
+                title="Knee Valgus Symmetry"
+                color="#8b5cf6"
+                baselineMean={results.metrics?.knee_valgus_symmetry?.baseline_mean}
+                baselineStd={results.metrics?.knee_valgus_symmetry?.baseline_std}
+                yAxisMin={0}
+                yAxisMax={100}
+                beginAtZero={true}
+                unit="%"
+                onClick={() => openChartModal(
+                  "Simmetria Knee Valgus",
+                  results.charts.knee_valgus_symmetry,
+                  results.charts.timeline,
+                  "#8b5cf6",
+                  results.metrics?.knee_valgus_symmetry?.baseline_mean,
+                  results.metrics?.knee_valgus_symmetry?.baseline_std,
+                  0,
+                  100,
+                  true,
+                  "%"
+                )}
+              />
+            </div>
+            {/if}
+            
             {#if results.charts.pelvic_drop}
             <div class="chart-wrapper">
               <h5>Caduta Pelvica</h5>
@@ -697,9 +796,32 @@
       </div>
     {/if}
     
-    <button class="btn-restart" on:click={restartAnalysis}>
-      🔄 Nuova Analisi
-    </button>
+    <!-- Bottoni azioni -->
+    <div class="action-buttons">
+      {#if mainFlow === 'baseline' || results.baselineCreated}
+        <button 
+          class="btn-save" 
+          on:click={saveBaseline}
+          disabled={true}
+          title="Funzionalità non ancora disponibile"
+        >
+          💾 Salva Baseline
+        </button>
+      {:else}
+        <button 
+          class="btn-save" 
+          on:click={saveAnalysis}
+          disabled={true}
+          title="Funzionalità non ancora disponibile"
+        >
+          💾 Salva Analisi
+        </button>
+      {/if}
+      
+      <button class="btn-restart" on:click={restartAnalysis}>
+        🔄 Nuova Analisi
+      </button>
+    </div>
     
   {:else}
     <div class="no-results">
@@ -947,6 +1069,58 @@
     font-weight: 700;
   }
   
+  .symmetry-card {
+    grid-column: 1 / -1; /* Occupa tutta la larghezza della griglia */
+  }
+  
+  .symmetry-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .symmetry-value {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .symmetry-percentage {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+    line-height: 1;
+  }
+  
+  .symmetry-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  .symmetry-progress-bar {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .symmetry-progress-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: auto;
+  }
+  
   .btn-restart {
     width: 100%;
     background: var(--accent-primary);
@@ -958,7 +1132,6 @@
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
-    margin-top: auto;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -968,6 +1141,34 @@
   .btn-restart:hover {
     background: #2980b9;
     transform: translateY(-1px);
+  }
+  
+  .btn-save {
+    width: 100%;
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .btn-save:hover:not(:disabled) {
+    background: #059669;
+    transform: translateY(-1px);
+  }
+  
+  .btn-save:disabled {
+    background: #6b7280;
+    cursor: not-allowed;
+    opacity: 0.6;
   }
   
   .no-results {

@@ -11,6 +11,7 @@ class Config:
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
     MODEL_FOLDER = os.path.join(BASE_DIR, 'models')
     PROCESSED_VIDEOS_FOLDER = os.path.join(BASE_DIR, 'processed_videos')
+    SAVED_ANALYSES_FOLDER = os.path.join(BASE_DIR, 'saved_analyses')
     
     # Estensioni video permesse
     ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm'}
@@ -35,4 +36,5 @@ class Config:
         os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
         os.makedirs(Config.MODEL_FOLDER, exist_ok=True)
         os.makedirs(Config.PROCESSED_VIDEOS_FOLDER, exist_ok=True)
+        os.makedirs(Config.SAVED_ANALYSES_FOLDER, exist_ok=True)
 

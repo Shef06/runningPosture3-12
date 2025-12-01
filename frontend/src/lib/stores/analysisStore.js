@@ -75,8 +75,38 @@ function createAnalysisStore() {
   return {
     subscribe,
     
-    // Reset completo
-    reset: () => set(initialState),
+    // Reset completo - pulisce tutti gli stati e gli URL
+    reset: () => {
+      // Pulisci gli URL dei video prima di resettare
+      update(state => {
+        // Revoca URL video singolo
+        if (state.videoUrl) {
+          URL.revokeObjectURL(state.videoUrl);
+        }
+        // Revoca URL video baseline
+        if (state.baselineVideoUrls && state.baselineVideoUrls.length > 0) {
+          state.baselineVideoUrls.forEach(url => {
+            if (url) URL.revokeObjectURL(url);
+          });
+        }
+        return state;
+      });
+      
+      // Crea uno stato pulito (senza dati da localStorage per baselineRanges e baselineThresholds)
+      const cleanState = {
+        ...initialState,
+        // Mantieni baselineRanges e baselineThresholds da localStorage se esistono
+        baselineRanges: initialState.baselineRanges,
+        baselineThresholds: initialState.baselineThresholds
+      };
+      
+      set(cleanState);
+      
+      // Ferma la camera stream se attiva (evento globale)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('stopcamera'));
+      }
+    },
     
     // Imposta flusso principale
     setMainFlow: (flow) => update(state => ({ ...state, mainFlow: flow, currentStep: 2 })),
@@ -204,7 +234,38 @@ function createAnalysisStore() {
     setLoading: (loading) => update(state => ({ ...state, loading })),
     setError: (error) => update(state => ({ ...state, error, loading: false })),
     setMessage: (message) => update(state => ({ ...state, message })),
-    clearMessages: () => update(state => ({ ...state, error: null, message: null }))
+    clearMessages: () => update(state => ({ ...state, error: null, message: null })),
+    
+    // Funzioni helper per pulire lo stato quando si torna indietro
+    clearResults: () => update(state => ({ ...state, results: null, isAnalyzing: false })),
+    
+    clearCalibration: () => update(state => ({ ...state, speed: null, fps: null })),
+    
+    clearVideoData: () => update(state => {
+      // Revoca URL video singolo
+      if (state.videoUrl) {
+        URL.revokeObjectURL(state.videoUrl);
+      }
+      // Revoca URL video baseline
+      if (state.baselineVideoUrls && state.baselineVideoUrls.length > 0) {
+        state.baselineVideoUrls.forEach(url => {
+          if (url) URL.revokeObjectURL(url);
+        });
+      }
+      return {
+        ...state,
+        videoFile: null,
+        videoUrl: null,
+        baselineVideos: [],
+        baselineVideoUrls: [],
+        recordedBlob: null,
+        isRecording: false
+      };
+    }),
+    
+    clearVideoMethod: () => update(state => ({ ...state, videoMethod: null })),
+    
+    clearViewType: () => update(state => ({ ...state, viewType: 'posterior' }))
   };
 }
 

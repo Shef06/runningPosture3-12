@@ -378,6 +378,13 @@ def create_baseline():
                     'std': baseline_stats['right_knee_valgus']['std'],
                     'unit': '°'
                 },
+                'kneeValgusSymmetry': {
+                    'min': baseline_stats.get('knee_valgus_symmetry', {}).get('min', 0.0),
+                    'max': baseline_stats.get('knee_valgus_symmetry', {}).get('max', 100.0),
+                    'mean': baseline_stats.get('knee_valgus_symmetry', {}).get('mean', 100.0),
+                    'std': baseline_stats.get('knee_valgus_symmetry', {}).get('std', 0.0),
+                    'unit': '%'
+                },
                 'pelvicDrop': {
                     'min': baseline_stats['pelvic_drop']['min'],
                     'max': baseline_stats['pelvic_drop']['max'],
@@ -615,6 +622,15 @@ def detect_anomaly():
                     'baseline_std': baseline_stats['right_knee_valgus']['std'],
                     'unit': '°'
                 },
+                'knee_valgus_symmetry': {
+                    'value': z_scores.get('knee_valgus_symmetry', {}).get('value', 0.0),
+                    'z_score': z_scores.get('knee_valgus_symmetry', {}).get('z_score', 0.0),
+                    'level': z_scores.get('knee_valgus_symmetry', {}).get('level', 'Ottimale'),
+                    'color': z_scores.get('knee_valgus_symmetry', {}).get('color', '#10b981'),
+                    'baseline_mean': baseline_stats.get('knee_valgus_symmetry', {}).get('mean', 100.0),
+                    'baseline_std': baseline_stats.get('knee_valgus_symmetry', {}).get('std', 0.0),
+                    'unit': '%'
+                },
                 'pelvic_drop': {
                     'value': z_scores['pelvic_drop']['value'],
                     'z_score': z_scores['pelvic_drop']['z_score'],
@@ -638,7 +654,8 @@ def detect_anomaly():
                 'left_knee_valgus': video_data['left_knee_valgus'],
                 'right_knee_valgus': video_data['right_knee_valgus'],
                 'pelvic_drop': video_data['pelvic_drop'],
-                'cadence': video_data.get('cadence', [])
+                'cadence': video_data.get('cadence', []),
+                'knee_valgus_symmetry': video_data.get('knee_valgus_symmetry', [])
             })
         
         else:  # lateral
@@ -694,6 +711,137 @@ def detect_anomaly():
         return jsonify({
             'status': 'error',
             'message': f'Errore interno: {str(e)}'
+        }), 500
+
+
+@app.route('/api/save_baseline', methods=['POST'])
+def save_baseline():
+    """
+    Endpoint per salvare una baseline con un nome personalizzato
+    
+    Body JSON:
+    {
+        'name': 'Nome della baseline (opzionale)',
+        'baseline_data': {...}  # Dati della baseline da salvare
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Nessun dato fornito'
+            }), 400
+        
+        # Genera nome file con timestamp se non fornito
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        name = data.get('name', f'baseline_{timestamp}')
+        
+        # Sanitizza il nome del file
+        import re
+        safe_name = re.sub(r'[^\w\-_\.]', '_', name)
+        safe_name = re.sub(r'\.+', '.', safe_name)
+        
+        # Crea percorso file
+        filename = f"{safe_name}.json"
+        filepath = os.path.join(Config.SAVED_ANALYSES_FOLDER, filename)
+        
+        # Aggiungi metadata
+        baseline_data = data.get('baseline_data', {})
+        baseline_data['saved_at'] = datetime.now().isoformat()
+        baseline_data['saved_name'] = name
+        baseline_data['type'] = 'baseline'
+        
+        # Se disponibile, carica anche i dati raw dalla baseline.json standard
+        if os.path.exists(BASELINE_JSON_PATH):
+            try:
+                with open(BASELINE_JSON_PATH, 'r') as f:
+                    raw_baseline = json.load(f)
+                baseline_data['raw_baseline_stats'] = raw_baseline
+            except Exception as e:
+                logger.warning(f"⚠ Impossibile caricare baseline raw: {e}")
+        
+        # Salva file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(baseline_data, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"✅ Baseline salvata: {filename}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Baseline salvata come "{name}"',
+            'filename': filename,
+            'filepath': filepath
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Errore nel salvataggio baseline: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'Errore nel salvataggio: {str(e)}'
+        }), 500
+
+
+@app.route('/api/save_analysis', methods=['POST'])
+def save_analysis():
+    """
+    Endpoint per salvare un'analisi con un nome personalizzato
+    
+    Body JSON:
+    {
+        'name': 'Nome dell\'analisi (opzionale)',
+        'analysis_data': {...}  # Dati dell'analisi da salvare
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Nessun dato fornito'
+            }), 400
+        
+        # Genera nome file con timestamp se non fornito
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        name = data.get('name', f'analisi_{timestamp}')
+        
+        # Sanitizza il nome del file
+        import re
+        safe_name = re.sub(r'[^\w\-_\.]', '_', name)
+        safe_name = re.sub(r'\.+', '.', safe_name)
+        
+        # Crea percorso file
+        filename = f"{safe_name}.json"
+        filepath = os.path.join(Config.SAVED_ANALYSES_FOLDER, filename)
+        
+        # Aggiungi metadata
+        analysis_data = data.get('analysis_data', {})
+        analysis_data['saved_at'] = datetime.now().isoformat()
+        analysis_data['saved_name'] = name
+        analysis_data['type'] = 'analysis'
+        
+        # Salva file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(analysis_data, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"✅ Analisi salvata: {filename}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Analisi salvata come "{name}"',
+            'filename': filename,
+            'filepath': filepath
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Errore nel salvataggio analisi: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'Errore nel salvataggio: {str(e)}'
         }), 500
 
 

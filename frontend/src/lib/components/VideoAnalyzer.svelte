@@ -451,15 +451,18 @@
     const speedNum = typeof speed === 'string' ? parseFloat(speed) : speed;
     const fpsNum = typeof fps === 'string' ? parseFloat(fps) : fps;
 
-    if (!speedNum || isNaN(speedNum) || speedNum <= 0) {
-      analysisStore.setError('Velocità del tapis roulant (speed) è obbligatoria e deve essere un numero valido');
+    if (!speedNum || isNaN(speedNum) || speedNum <= 0 || speedNum > 50) {
+      analysisStore.setError('Velocità deve essere tra 0.1 e 50 km/h');
       return;
     }
     
-    if (!fpsNum || isNaN(fpsNum) || fpsNum <= 0) {
-      analysisStore.setError('FPS del video è obbligatorio e deve essere un numero valido');
+    if (!fpsNum || isNaN(fpsNum) || fpsNum <= 0 || fpsNum > 240) {
+      analysisStore.setError('FPS deve essere tra 15 e 240');
       return;
     }
+    
+    // Ottieni viewType dallo store
+    const viewType = $analysisStore.viewType || 'posterior';
     
     // Imposta loading nello store per mostrare overlay in StepHolder
     analysisStore.setLoading(true);
@@ -485,6 +488,7 @@
       
       const formData = new FormData();
       formData.append('video', videoFile);
+      formData.append('view_type', viewType);
       formData.append('speed', speedNum.toString());
       formData.append('fps', fpsNum.toString());
       if (height) formData.append('height', height.toString());

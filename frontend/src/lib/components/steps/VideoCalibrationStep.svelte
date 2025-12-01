@@ -16,19 +16,27 @@
   }
   
   function continueToAnalysis() {
-    if (!videoFile) return;
+    if (!videoFile) {
+      analysisStore.setError('Seleziona un video');
+      return;
+    }
+    
+    // Converti a numero per sicurezza
+    const speedNum = typeof speed === 'string' ? parseFloat(speed) : speed;
+    const fpsNum = typeof fps === 'string' ? parseFloat(fps) : fps;
+    
     // Valida parametri obbligatori
-    if (!speed || speed <= 0) {
-      alert('Inserisci la velocità del tapis roulant (km/h)');
+    if (!speedNum || isNaN(speedNum) || speedNum <= 0 || speedNum > 50) {
+      analysisStore.setError('Velocità deve essere tra 0.1 e 50 km/h');
       return;
     }
     
-    if (!fps || fps <= 0) {
-      alert('Inserisci gli FPS del video');
+    if (!fpsNum || isNaN(fpsNum) || fpsNum <= 0 || fpsNum > 240) {
+      analysisStore.setError('FPS deve essere tra 15 e 240');
       return;
     }
     
-    analysisStore.setCalibration(speed, fps);
+    analysisStore.setCalibration(speedNum, fpsNum);
     analysisStore.nextStep();
   }
 </script>
@@ -83,7 +91,7 @@
         type="number" 
         id="speed" 
         bind:value={speed} 
-        min="1" 
+        min="0.1" 
         max="50" 
         step="0.1"
         required

@@ -6,6 +6,7 @@
   $: baselineVideos = $analysisStore.baselineVideos;
   $: speed = $analysisStore.speed;
   $: fps = $analysisStore.fps;
+  $: viewType = $analysisStore.viewType;
   $: height = $analysisStore.height;
   $: mass = $analysisStore.mass;
   
@@ -72,16 +73,27 @@
       return;
     }
     
+    // Converti a numero per sicurezza
+    const speedNum = typeof speed === 'string' ? parseFloat(speed) : speed;
+    const fpsNum = typeof fps === 'string' ? parseFloat(fps) : fps;
+    
     // Valida parametri obbligatori
-    if (!speed || speed <= 0) {
-      message = 'Velocità del tapis roulant (speed) è obbligatoria';
+    if (!speedNum || isNaN(speedNum) || speedNum <= 0 || speedNum > 50) {
+      message = 'Velocità deve essere tra 0.1 e 50 km/h';
       messageType = 'error';
       analysisStore.setError(message);
       return;
     }
     
-    if (!fps || fps <= 0) {
-      message = 'FPS del video è obbligatorio';
+    if (!fpsNum || isNaN(fpsNum) || fpsNum <= 0 || fpsNum > 240) {
+      message = 'FPS deve essere tra 15 e 240';
+      messageType = 'error';
+      analysisStore.setError(message);
+      return;
+    }
+    
+    if (!viewType) {
+      message = 'Tipo di vista non selezionato';
       messageType = 'error';
       analysisStore.setError(message);
       return;
@@ -104,10 +116,11 @@
         formData.append('videos', file);
       });
       // Aggiungi parametri di calibrazione
-      formData.append('speed', speed);
-      formData.append('fps', fps);
-      if (height) formData.append('height', height);
-      if (mass) formData.append('mass', mass);
+      formData.append('view_type', viewType || 'posterior');
+      formData.append('speed', speed.toString());
+      formData.append('fps', fps.toString());
+      if (height) formData.append('height', height.toString());
+      if (mass) formData.append('mass', mass.toString());
       
       const response = await fetch('http://localhost:5000/api/create_baseline', {
         method: 'POST',
