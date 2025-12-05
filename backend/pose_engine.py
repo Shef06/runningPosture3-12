@@ -89,7 +89,8 @@ class PoseEngine:
                  min_detection_confidence: float = 0.5,
                  min_tracking_confidence: float = 0.5,
                  use_cache: bool = True,
-                 generate_skeleton_video: bool = True):
+                 generate_skeleton_video: bool = True,
+                 enable_segmentation: bool = True):
         """
         Inizializza il PoseEngine
         
@@ -99,6 +100,7 @@ class PoseEngine:
             min_tracking_confidence: Soglia di confidenza per tracking
             use_cache: Se True, usa cache per evitare rielaborazioni
             generate_skeleton_video: Se True, genera video con overlay scheletro
+            enable_segmentation: Se True, abilita segmentazione per Ghost Vision
         """
         self.mp_pose = mp.solutions.pose
         self.model_complexity = model_complexity
@@ -106,6 +108,7 @@ class PoseEngine:
         self.min_tracking_confidence = min_tracking_confidence
         self.use_cache = use_cache
         self.generate_skeleton_video = generate_skeleton_video
+        self.enable_segmentation = enable_segmentation
         
         # Crea directory cache se non esiste
         if self.use_cache:
@@ -160,6 +163,61 @@ class PoseEngine:
                 cv2.circle(frame_copy, (point_data[0], point_data[1]), landmark_radius, landmark_color, -1)
         
         return frame_copy
+    
+    def _extract_ghost_silhouette(self, frame: np.ndarray, segmentation_mask: np.ndarray, 
+                                   color: Tuple[int, int, int] = (0, 255, 255)) -> np.ndarray:
+        """
+        Estrae la silhouette del corpo dalla segmentation mask per Ghost Vision
+        
+        Args:
+            frame: Frame originale del video (BGR)
+            segmentation_mask: Mask di segmentazione da MediaPipe (valori 0-1)
+            color: Colore BGR per la silhouette (default: ciano/azzurro)
+            
+        Returns:
+            Immagine RGBA con silhouette colorata su sfondo trasparente
+        """
+        h, w = frame.shape[:2]
+        
+        # Converti la mask in formato uint8 (0-255)
+        mask_uint8 = (segmentation_mask * 255).astype(np.uint8)
+        
+        # Applica threshold per binarizzare la mask
+        _, binary_mask = cv2.threshold(mask_uint8, 127, 255, cv2.THRESH_BINARY)
+        
+        # Applica operazioni morfologiche per pulire la mask
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        binary_mask = cv2.morphologyEx(binary_mask, cv2.MORPH_CLOSE, kernel)
+        binary_mask = cv2.morphologyEx(binary_mask, cv2.MORPH_OPEN, kernel)
+        
+        # Trova i contorni della silhouette
+        contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # Crea immagine RGBA (con canale alpha per trasparenza)
+        ghost_img = np.zeros((h, w, 4), dtype=np.uint8)
+        
+        if len(contours) > 0:
+            # Trova il contorno più grande (presumibilmente il corpo)
+            largest_contour = max(contours, key=cv2.contourArea)
+            
+            # Crea un'immagine BGR separata e contigua per disegnare i contorni
+            # Questo evita problemi con array non contigui
+            bgr_img = np.zeros((h, w, 3), dtype=np.uint8)
+            
+            # Disegna la silhouette piena con il colore specificato
+            cv2.drawContours(bgr_img, [largest_contour], -1, color, -1)
+            
+            # Disegna il contorno (bordo) più evidente
+            cv2.drawContours(bgr_img, [largest_contour], -1, color, 3)
+            
+            # Copia i canali BGR nell'immagine RGBA
+            ghost_img[:, :, :3] = bgr_img
+            
+            # Imposta il canale alpha (opacità)
+            # Usa la mask per impostare l'opacità: 0 = trasparente, 255 = opaco
+            ghost_img[:, :, 3] = binary_mask
+        
+        return ghost_img
     
     def _get_angle_2d(self, a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:
         """
@@ -671,7 +729,7 @@ class PoseEngine:
                 model_complexity=self.model_complexity,
                 min_detection_confidence=self.min_detection_confidence,
                 min_tracking_confidence=0.1,  # Basso per ridurre dipendenze temporali
-                enable_segmentation=False,
+                enable_segmentation=self.enable_segmentation,  # Abilita per Ghost Vision
                 smooth_landmarks=False  # Disabilitato per evitare tracking temporale
             )
         
@@ -721,6 +779,10 @@ class PoseEngine:
                 else:
                     frame_with_skeleton = frame  # Frame senza scheletro se pose non rilevata
                 video_writer.write(frame_with_skeleton)
+            
+            # Salva segmentation mask per Ghost Vision (se abilitata)
+            # Nota: le mask vengono salvate in memoria durante il processing
+            # e poi processate per estrarre la migliore baseline
             
             if results and results.pose_world_landmarks:
                 landmarks = results.pose_world_landmarks.landmark
@@ -991,6 +1053,154 @@ class PoseEngine:
             self._save_to_cache(result, cache_path)
         
         return result
+    
+    def generate_ghost_frames(self, video_path: str, output_folder: str, 
+                             fps: Optional[float] = None, 
+                             ghost_color: Tuple[int, int, int] = (0, 255, 255)) -> Dict:
+        """
+        Genera frame "ghost" (silhouette) da un video baseline per Ghost Vision
+        
+        Args:
+            video_path: Percorso del video da processare
+            output_folder: Cartella dove salvare i frame ghost
+            fps: FPS del video (opzionale)
+            ghost_color: Colore BGR per la silhouette (default: ciano)
+            
+        Returns:
+            Dizionario con informazioni sui frame generati
+        """
+        logger.info(f"=== Generazione Ghost Frames da: {video_path} ===")
+        
+        # Verifica che il file esista
+        if not os.path.exists(video_path):
+            logger.error(f"❌ File video non trovato: {video_path}")
+            raise FileNotFoundError(f"File video non trovato: {video_path}")
+        
+        # Verifica che il file non sia vuoto
+        file_size = os.path.getsize(video_path)
+        if file_size == 0:
+            logger.error(f"❌ File video vuoto: {video_path}")
+            raise ValueError(f"File video vuoto: {video_path}")
+        
+        logger.info(f"📁 File video trovato: {os.path.basename(video_path)} ({file_size / (1024*1024):.2f} MB)")
+        
+        # Crea la cartella output se non esiste
+        os.makedirs(output_folder, exist_ok=True)
+        logger.info(f"📁 Cartella output creata/verificata: {output_folder}")
+        
+        # Apri il video
+        logger.info(f"🔄 Tentativo apertura video con OpenCV...")
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            logger.error(f"❌ Impossibile aprire il video con OpenCV: {video_path}")
+            logger.error(f"   Verifica che il codec del video sia supportato da OpenCV")
+            logger.error(f"   Dimensione file: {file_size / (1024*1024):.2f} MB")
+            logger.error(f"   File esiste: {os.path.exists(video_path)}")
+            raise ValueError(f"Impossibile aprire il video: {video_path}. Verifica che il codec sia supportato.")
+        
+        logger.info(f"✅ Video aperto con successo con OpenCV")
+        
+        # Ottieni FPS del video se non forniti
+        if fps is None:
+            fps = cap.get(cv2.CAP_PROP_FPS)
+        
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        logger.info(f"Video: {total_frames} frame, {fps:.2f} FPS, {width}x{height}")
+        logger.info(f"Segmentazione abilitata: {self.enable_segmentation}")
+        logger.info(f"🎨 Colore silhouette: BGR({ghost_color[0]}, {ghost_color[1]}, {ghost_color[2]}) = Ciano")
+        
+        # Inizializza MediaPipe Pose con segmentazione
+        logger.info("🔄 Inizializzazione MediaPipe Pose con segmentazione...")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            pose = self.mp_pose.Pose(
+                model_complexity=self.model_complexity,
+                min_detection_confidence=self.min_detection_confidence,
+                min_tracking_confidence=0.1,
+                enable_segmentation=True,  # Sempre abilitata per ghost frames
+                smooth_landmarks=False
+            )
+        logger.info("✅ MediaPipe Pose inizializzato con segmentazione attiva")
+        
+        frame_count = 0
+        frames_processed = 0
+        ghost_frames_info = []
+        
+        logger.info("🎬 Inizio processing frame per generare ghost silhouettes...")
+        
+        # Processa frame per frame
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            # Converti BGR a RGB
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
+            # Processa con MediaPipe
+            try:
+                with suppress_stderr():
+                    results = pose.process(frame_rgb)
+            except Exception as e:
+                logger.warning(f"⚠ Errore MediaPipe frame {frame_count}: {e}")
+                results = None
+            
+            # Estrai segmentation mask se disponibile
+            if results and results.segmentation_mask is not None:
+                # Estrai la silhouette ghost
+                ghost_img = self._extract_ghost_silhouette(frame, results.segmentation_mask, ghost_color)
+                
+                # Salva il frame ghost come PNG (supporta trasparenza)
+                ghost_filename = f"ghost_frame_{frame_count:06d}.png"
+                ghost_path = os.path.join(output_folder, ghost_filename)
+                cv2.imwrite(ghost_path, ghost_img)
+                
+                ghost_frames_info.append({
+                    'frame_number': frame_count,
+                    'timestamp': frame_count / fps,
+                    'filename': ghost_filename,
+                    'path': ghost_path
+                })
+                
+                frames_processed += 1
+                
+                # Log dettagliato ogni 60 frame
+                if frames_processed % 60 == 0:
+                    progress_pct = (frame_count / total_frames) * 100
+                    logger.info(f"👻 Ghost frames generati: {frames_processed} frame ({progress_pct:.1f}% video processato)")
+            else:
+                # Log quando segmentation non disponibile
+                if frame_count % 100 == 0:
+                    logger.debug(f"⚠ Frame {frame_count}: segmentation mask non disponibile (pose non rilevata)")
+            
+            frame_count += 1
+            
+            # Log progress generale ogni 30 frame
+            if frame_count % 30 == 0 and frame_count % 60 != 0:
+                logger.debug(f"📹 Processati {frame_count}/{total_frames} frame...")
+        
+        cap.release()
+        pose.close()
+        
+        logger.info("=" * 60)
+        logger.info(f"✅ GHOST FRAMES GENERATI: {frames_processed}/{frame_count} frame")
+        logger.info(f"📊 Tasso di successo: {(frames_processed/frame_count*100):.1f}%")
+        logger.info(f"📁 Cartella output: {output_folder}")
+        logger.info(f"💾 File salvati: {len(ghost_frames_info)} ghost frames PNG")
+        logger.info("=" * 60)
+        
+        return {
+            'total_frames': frame_count,
+            'frames_processed': frames_processed,
+            'fps': float(fps),
+            'video_width': width,
+            'video_height': height,
+            'output_folder': output_folder,
+            'ghost_frames': ghost_frames_info
+        }
     
     def create_baseline_stats(self, videos_data: List[Dict]) -> Dict:
         """

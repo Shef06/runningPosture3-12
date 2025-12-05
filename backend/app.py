@@ -140,6 +140,87 @@ def get_processed_video(filename):
     return response
 
 
+@app.route('/api/ghost_frame/<path:filename>', methods=['GET'])
+def get_ghost_frame(filename):
+    """Endpoint per servire i frame ghost per Ghost Vision"""
+    from config import Config
+    from urllib.parse import unquote
+    
+    # Decodifica il nome del file dall'URL (gestisce caratteri speciali)
+    filename = unquote(filename)
+    
+    # Sanitizza il nome del file per sicurezza (rimuove path traversal)
+    filename = os.path.basename(filename)  # Rimuove eventuali percorsi
+    
+    ghost_path = os.path.join(Config.GHOST_FRAMES_FOLDER, filename)
+    
+    logger.debug(f"👻 Richiesta ghost frame: {filename}")
+    logger.debug(f"👻 Percorso completo: {ghost_path}")
+    
+    if not os.path.exists(ghost_path):
+        logger.warning(f"⚠ Ghost frame non trovato: {ghost_path}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Ghost frame non trovato: {filename}'
+        }), 404
+    
+    # Verifica che il file sia nella directory corretta (sicurezza)
+    if not os.path.abspath(ghost_path).startswith(os.path.abspath(Config.GHOST_FRAMES_FOLDER)):
+        logger.warning(f"⚠ Tentativo di accesso non autorizzato: {ghost_path}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Accesso negato'
+        }), 403
+    
+    logger.debug(f"✅ Invio ghost frame: {filename}")
+    
+    # Aggiungi headers per immagini PNG con trasparenza
+    response = send_from_directory(Config.GHOST_FRAMES_FOLDER, filename)
+    response.headers['Content-Type'] = 'image/png'
+    response.headers['Cache-Control'] = 'public, max-age=3600'
+    return response
+
+
+@app.route('/api/ghost_frame_by_number/<int:frame_number>', methods=['GET'])
+def get_ghost_frame_by_number(frame_number):
+    """
+    Endpoint per ottenere un ghost frame specifico per numero di frame
+    Usato per sincronizzazione con il video dell'utente
+    """
+    from config import Config
+    from urllib.parse import quote
+    
+    # Genera il nome del file ghost basato sul numero di frame
+    ghost_filename = f"ghost_frame_{frame_number:06d}.png"
+    ghost_path = os.path.join(Config.GHOST_FRAMES_FOLDER, ghost_filename)
+    
+    logger.debug(f"👻 Richiesta ghost frame #{frame_number}")
+    
+    if not os.path.exists(ghost_path):
+        # Se il frame specifico non esiste, restituisci un errore 404
+        # Il frontend può gestire questo caso mostrando nessun overlay
+        return jsonify({
+            'status': 'error',
+            'message': f'Ghost frame {frame_number} non disponibile'
+        }), 404
+    
+    # Verifica sicurezza
+    if not os.path.abspath(ghost_path).startswith(os.path.abspath(Config.GHOST_FRAMES_FOLDER)):
+        logger.warning(f"⚠ Tentativo di accesso non autorizzato: {ghost_path}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Accesso negato'
+        }), 403
+    
+    # Restituisci l'URL del ghost frame
+    return jsonify({
+        'status': 'success',
+        'frame_number': frame_number,
+        'ghost_url': f'/api/ghost_frame/{quote(ghost_filename)}',
+        'filename': ghost_filename
+    })
+
+
 @app.route('/api/create_baseline', methods=['POST'])
 def create_baseline():
     """
@@ -330,9 +411,126 @@ def create_baseline():
             logger.error(f"❌ Errore nel salvataggio baseline: {type(e).__name__}: {str(e)}", exc_info=True)
             raise
         
-        # Pulisci video temporanei
-        for video_path in video_paths:
-            safe_remove_file(video_path)
+        # Pulisci video temporanei (tranne il migliore, che useremo per ghost frames)
+        # Trova il video con meno deviazione dalla media (il "migliore")
+        best_video_idx = 0
+        min_deviation = float('inf')
+        
+        for idx, video_data in enumerate(videos_data):
+            # Calcola deviazione media per questo video
+            if view_type == 'posterior':
+                mean_left_valgus = np.mean(video_data['left_knee_valgus'])
+                mean_right_valgus = np.mean(video_data['right_knee_valgus'])
+                mean_pelvic_drop = np.mean(video_data['pelvic_drop'])
+                
+                # Calcola distanza dalla media baseline
+                deviation = (
+                    abs(mean_left_valgus - baseline_stats['left_knee_valgus']['mean']) +
+                    abs(mean_right_valgus - baseline_stats['right_knee_valgus']['mean']) +
+                    abs(mean_pelvic_drop - baseline_stats['pelvic_drop']['mean'])
+                )
+            else:  # lateral
+                mean_overstriding = np.mean(video_data['overstriding'])
+                mean_knee_flexion = np.mean(video_data['knee_flexion_ic'])
+                mean_trunk_lean = np.mean(video_data['trunk_lean'])
+                
+                # Calcola distanza dalla media baseline
+                deviation = (
+                    abs(mean_overstriding - baseline_stats['overstriding']['mean']) +
+                    abs(mean_knee_flexion - baseline_stats['knee_flexion_ic']['mean']) +
+                    abs(mean_trunk_lean - baseline_stats['trunk_lean']['mean'])
+                )
+            
+            if deviation < min_deviation:
+                min_deviation = deviation
+                best_video_idx = idx
+        
+        best_video_path = video_paths[best_video_idx]
+        logger.info(f"📹 Video migliore per Ghost Vision: #{best_video_idx+1} ({os.path.basename(best_video_path)})")
+        logger.info(f"📊 Deviazione minima: {min_deviation:.4f}")
+        
+        # Genera ghost frames dal video migliore
+        ghost_frames_info = None
+        try:
+            # Verifica che il video esista ancora prima di processarlo
+            if not os.path.exists(best_video_path):
+                logger.warning(f"⚠ Video migliore non trovato: {best_video_path}")
+                logger.warning("  Il file potrebbe essere già stato rimosso. Saltando generazione ghost frames.")
+                raise FileNotFoundError(f"Video non trovato: {best_video_path}")
+            
+            # Verifica che il file non sia vuoto
+            if os.path.getsize(best_video_path) == 0:
+                logger.warning(f"⚠ Video migliore è vuoto: {best_video_path}")
+                raise ValueError(f"Video vuoto: {best_video_path}")
+            
+            logger.info("=" * 60)
+            logger.info("👻 FASE 4: GENERAZIONE GHOST VISION")
+            logger.info("=" * 60)
+            logger.info(f"📹 Video selezionato per Ghost Vision: {os.path.basename(best_video_path)}")
+            logger.info(f"📁 Percorso completo: {best_video_path}")
+            logger.info(f"📊 Dimensione file: {os.path.getsize(best_video_path) / (1024*1024):.2f} MB")
+            logger.info(f"📊 Deviazione dalla media: {min_deviation:.4f} (minimo tra i 5 video)")
+            logger.info(f"🎨 Colore silhouette: Ciano/Azzurro (0, 255, 255)")
+            logger.info(f"📁 Cartella output: {Config.GHOST_FRAMES_FOLDER}")
+            logger.info("🔄 Avvio generazione ghost frames...")
+            
+            ghost_engine = PoseEngine(
+                model_complexity=Config.MEDIAPIPE_MODEL_COMPLEXITY,
+                min_detection_confidence=Config.MEDIAPIPE_MIN_DETECTION_CONFIDENCE,
+                min_tracking_confidence=Config.MEDIAPIPE_MIN_TRACKING_CONFIDENCE,
+                enable_segmentation=True
+            )
+            
+            # Genera ghost frames nella cartella dedicata
+            ghost_frames_info = ghost_engine.generate_ghost_frames(
+                best_video_path,
+                Config.GHOST_FRAMES_FOLDER,
+                fps=fps,
+                ghost_color=(0, 255, 255)  # Ciano/azzurro
+            )
+            
+            logger.info("=" * 60)
+            logger.info("✅ GHOST VISION GENERATA CON SUCCESSO!")
+            logger.info(f"📊 Frame processati: {ghost_frames_info['frames_processed']}/{ghost_frames_info['total_frames']}")
+            logger.info(f"📐 Dimensioni video: {ghost_frames_info['video_width']}x{ghost_frames_info['video_height']}")
+            logger.info(f"🎬 FPS: {ghost_frames_info['fps']:.2f}")
+            logger.info(f"📁 Frame salvati in: {ghost_frames_info['output_folder']}")
+            logger.info(f"👻 Ghost Vision disponibile per confronto visivo!")
+            logger.info("=" * 60)
+            
+            # Salva info ghost frames nella baseline
+            baseline_stats['ghost_frames'] = {
+                'total_frames': ghost_frames_info['total_frames'],
+                'frames_processed': ghost_frames_info['frames_processed'],
+                'fps': ghost_frames_info['fps'],
+                'video_width': ghost_frames_info['video_width'],
+                'video_height': ghost_frames_info['video_height'],
+                'best_video_index': best_video_idx
+            }
+            
+            # Salva di nuovo il baseline.json con le informazioni sui ghost_frames
+            logger.info("💾 Aggiornamento baseline.json con informazioni Ghost Vision...")
+            try:
+                with open(BASELINE_JSON_PATH, 'w') as f:
+                    json.dump(baseline_stats, f, indent=2)
+                logger.info("  ✓ Baseline aggiornata con successo (include ghost_frames)")
+            except Exception as e:
+                logger.error(f"⚠ Errore nell'aggiornamento baseline: {type(e).__name__}: {str(e)}", exc_info=True)
+            
+        except Exception as e:
+            logger.error(f"⚠ Errore nella generazione ghost frames: {e}", exc_info=True)
+            logger.warning("  Continuando senza ghost frames...")
+        
+        # Pulisci tutti i video temporanei (incluso il migliore, dopo aver generato i ghost frames)
+        # IMPORTANTE: Rimuovi i video SOLO dopo aver generato i ghost frames
+        logger.info("🧹 Pulizia video temporanei...")
+        for idx, video_path in enumerate(video_paths):
+            if os.path.exists(video_path):
+                logger.debug(f"  Rimozione video {idx+1}/5: {os.path.basename(video_path)}")
+                safe_remove_file(video_path)
+            else:
+                logger.debug(f"  Video {idx+1}/5 già rimosso: {os.path.basename(video_path)}")
+        logger.info("✅ Pulizia video temporanei completata")
         
         logger.info("✅ Baseline creata con successo!")
         
@@ -359,6 +557,8 @@ def create_baseline():
             'baselineCreated': True,
             'viewType': view_type,
             'skeleton_video_url': skeleton_video_url,
+            'ghost_vision_available': ghost_frames_info is not None,
+            'ghost_frames_count': ghost_frames_info['frames_processed'] if ghost_frames_info else 0,
             'baselineRanges': {}
         }
         
@@ -582,6 +782,55 @@ def detect_anomaly():
             else:
                 logger.warning(f"⚠ Video scheletro non trovato: {skeleton_path}")
         
+        # Verifica se la baseline ha ghost frames disponibili
+        ghost_vision_available = False
+        ghost_frames_count = 0
+        logger.info("🔍 Verifica disponibilità Ghost Vision...")
+        logger.info(f"  Baseline stats keys: {list(baseline_stats.keys())}")
+        
+        # Verifica sempre la cartella, anche se 'ghost_frames' non è nel JSON
+        # (per supportare baseline create prima di questa modifica)
+        if os.path.exists(Config.GHOST_FRAMES_FOLDER):
+            # Conta i file ghost frame nella cartella
+            ghost_files = [f for f in os.listdir(Config.GHOST_FRAMES_FOLDER) 
+                         if f.startswith('ghost_frame_') and f.endswith('.png')]
+            logger.info(f"  File ghost trovati nella cartella: {len(ghost_files)}")
+            
+            if len(ghost_files) > 0:
+                ghost_vision_available = True
+                ghost_frames_count = len(ghost_files)
+                logger.info(f"✅ Ghost Vision disponibile: {ghost_frames_count} frame trovati")
+                
+                # Se 'ghost_frames' non è nel JSON ma ci sono file, aggiorna il JSON
+                if 'ghost_frames' not in baseline_stats:
+                    logger.info("  ⚠ 'ghost_frames' non presente nel JSON, ma file trovati nella cartella")
+                    logger.info("  💾 Aggiornamento baseline.json con informazioni Ghost Vision...")
+                    try:
+                        # Stima le informazioni dai file trovati
+                        baseline_stats['ghost_frames'] = {
+                            'total_frames': len(ghost_files),
+                            'frames_processed': len(ghost_files),
+                            'fps': baseline_fps,  # Usa FPS dalla baseline
+                            'best_video_index': 0  # Sconosciuto
+                        }
+                        with open(BASELINE_JSON_PATH, 'w') as f:
+                            json.dump(baseline_stats, f, indent=2)
+                        logger.info("  ✓ Baseline aggiornata con informazioni ghost_frames")
+                    except Exception as e:
+                        logger.warning(f"  ⚠ Impossibile aggiornare baseline.json: {e}")
+            else:
+                logger.warning(f"⚠ Nessun file ghost trovato nella cartella")
+        else:
+            logger.warning(f"⚠ Cartella ghost_frames non esiste: {Config.GHOST_FRAMES_FOLDER}")
+        
+        # Verifica anche le informazioni nel JSON (se presenti)
+        if 'ghost_frames' in baseline_stats:
+            ghost_frames_info = baseline_stats['ghost_frames']
+            logger.info(f"  Ghost frames info nel JSON: {ghost_frames_info}")
+            logger.info(f"  Frames processati (JSON): {ghost_frames_info.get('frames_processed', 0)}")
+        
+        logger.info(f"👻 Risultato verifica: available={ghost_vision_available}, count={ghost_frames_count}")
+        
         # Prepara risposta per frontend
         response_data = {
             'status': 'success',
@@ -590,6 +839,8 @@ def detect_anomaly():
             'anomaly_color': z_scores['overall_color'],
             'anomaly_score': z_scores['max_z_score'],
             'skeleton_video_url': skeleton_video_url,
+            'ghost_vision_available': ghost_vision_available,
+            'ghost_frames_count': ghost_frames_count,
             'metrics': {},
             'charts': {
                 'timeline': list(range(video_data['n_frames']))

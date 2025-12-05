@@ -44,6 +44,9 @@ const initialState = {
   // Analisi in corso
   isAnalyzing: false,
   
+  // Ghost Vision
+  ghostVisionEnabled: false,
+  
   // UI
   loading: false,
   error: null,
@@ -229,6 +232,9 @@ function createAnalysisStore() {
     
     // Analisi
     setAnalyzing: (isAnalyzing) => update(state => ({ ...state, isAnalyzing })),
+    
+    // Ghost Vision
+    setGhostVision: (enabled) => update(state => ({ ...state, ghostVisionEnabled: enabled })),
     
     // UI feedback
     setLoading: (loading) => update(state => ({ ...state, loading })),

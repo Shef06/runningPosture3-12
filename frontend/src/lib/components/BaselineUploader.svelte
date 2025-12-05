@@ -137,6 +137,8 @@
           totalFrames: data.details?.n_frames_total || 0,
           viewType: data.viewType || 'posterior',
           skeleton_video_url: data.skeleton_video_url || null, // Includi URL video con scheletro
+          ghost_vision_available: data.ghost_vision_available || false, // Disponibilità Ghost Vision
+          ghost_frames_count: data.ghost_frames_count || 0, // Numero di frame ghost generati
           baselineRanges: data.baselineRanges || (data.details?.feature_ranges ? {
             features: {
               cpd: data.details.feature_ranges.cpd,
@@ -154,6 +156,19 @@
         };
         analysisStore.setResults(results);
         console.log('📹 Risultati baseline salvati, skeleton_video_url:', results.skeleton_video_url);
+        
+        // Log informazioni Ghost Vision se disponibile
+        if (data.ghost_vision_available) {
+          console.log('='.repeat(60));
+          console.log('👻 GHOST VISION DISPONIBILE!');
+          console.log('='.repeat(60));
+          console.log('📊 Frame ghost generati:', data.ghost_frames_count || 'N/A');
+          console.log('✅ Ghost Vision sarà disponibile nella fase Risultati');
+          console.log('🎨 Silhouette baseline pronta per confronto visivo');
+          console.log('='.repeat(60));
+        } else {
+          console.log('ℹ️ Ghost Vision non disponibile per questa baseline');
+        }
         
         // Salva E_max e thresholds se disponibili
         if (data.details?.thresholds) {

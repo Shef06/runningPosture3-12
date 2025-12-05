@@ -9,6 +9,38 @@
 
   // Stato per il modal del grafico
   let expandedChart = null;  // { title, data, labels, color, baselineMean, baselineStd }
+  
+  // Stato per Ghost Vision - USA LO STORE invece di variabile locale
+  $: ghostVisionEnabled = $analysisStore.ghostVisionEnabled;
+  $: ghostVisionAvailable = results?.ghost_vision_available || false;
+  
+  // Debug: log sempre per vedere lo stato
+  $: if (results) {
+    console.log('🔍 ResultsStep - Stato Ghost Vision:', {
+      hasResults: !!results,
+      ghost_vision_available: results?.ghost_vision_available,
+      ghost_frames_count: results?.ghost_frames_count,
+      skeleton_video_url: results?.skeleton_video_url,
+      calculatedAvailable: ghostVisionAvailable
+    });
+  }
+  
+  // Log quando Ghost Vision diventa disponibile
+  $: if (ghostVisionAvailable && results) {
+    console.log('='.repeat(60));
+    console.log('👻 GHOST VISION DISPONIBILE NEI RISULTATI');
+    console.log('='.repeat(60));
+    console.log('📊 Frame ghost disponibili:', results.ghost_frames_count || 'N/A');
+    console.log('🎬 Video skeleton:', results.skeleton_video_url ? 'Disponibile' : 'Non disponibile');
+    console.log('✅ Toggle Ghost Vision visibile nell\'interfaccia');
+    console.log('💡 Attiva il toggle per vedere la silhouette baseline');
+    console.log('='.repeat(60));
+  } else if (results && !ghostVisionAvailable) {
+    console.log('⚠️ ResultsStep - Ghost Vision NON disponibile:', {
+      ghost_vision_available: results?.ghost_vision_available,
+      ghost_frames_count: results?.ghost_frames_count
+    });
+  }
 
   function restartAnalysis() {
     analysisStore.reset();
@@ -63,6 +95,27 @@
   function saveAnalysis() {
     // Funzionalità disabilitata - da implementare in futuro
     console.log('Salvataggio analisi - funzionalità non ancora implementata');
+  }
+  
+  // Funzione per toggle Ghost Vision
+  function toggleGhostVision() {
+    const newState = !$analysisStore.ghostVisionEnabled;
+    analysisStore.setGhostVision(newState);
+    
+    if (newState) {
+      console.log('='.repeat(60));
+      console.log('👻 GHOST VISION ATTIVATA');
+      console.log('='.repeat(60));
+      console.log('📹 Video: Skeleton video con overlay ghost');
+      console.log('🎨 Silhouette: Ciano semitrasparente (50% opacità)');
+      console.log('🔄 Sincronizzazione: Basata su timestamp video');
+      console.log('📊 Frame disponibili:', results?.ghost_frames_count || 'N/A');
+      console.log('✅ Overlay attivo - Confronto visivo disponibile');
+      console.log('='.repeat(60));
+    } else {
+      console.log('👻 Ghost Vision DISATTIVATA');
+      console.log('⏸️ Overlay rimosso dal video');
+    }
   }
 </script>
 
@@ -300,6 +353,31 @@
             <p>📊 Livello: {results.anomaly_level || 'N/A'}</p>
           {/if}
         </div>
+        
+        <!-- Ghost Vision Toggle -->
+        {#if ghostVisionAvailable}
+        <div class="ghost-vision-section">
+          <div class="ghost-vision-header">
+            <div class="ghost-vision-info">
+              <h5>👻 Ghost Vision</h5>
+              <p>Sovrapponi la silhouette della baseline perfetta al tuo video</p>
+            </div>
+            <label class="toggle-switch">
+              <input 
+                type="checkbox" 
+                checked={ghostVisionEnabled}
+                on:change={toggleGhostVision}
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          {#if ghostVisionEnabled}
+          <div class="ghost-vision-active">
+            <span class="ghost-indicator">👻 Overlay attivo</span>
+          </div>
+          {/if}
+        </div>
+        {/if}
         
         {#if results.metrics}
           <div class="metrics-section">
@@ -1204,6 +1282,116 @@
   @media (max-width: 360px) {
     .metrics-grid {
       grid-template-columns: 1fr;
+    }
+  }
+  
+  /* Ghost Vision Toggle Styles */
+  .ghost-vision-section {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: rgba(0, 255, 255, 0.05);
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    border-radius: 8px;
+  }
+  
+  .ghost-vision-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .ghost-vision-info h5 {
+    font-size: 0.95rem;
+    margin: 0 0 0.25rem 0;
+    color: var(--text-light);
+    font-weight: 600;
+  }
+  
+  .ghost-vision-info p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
+  }
+  
+  /* Toggle Switch Styles */
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.2);
+    transition: 0.3s;
+    border-radius: 28px;
+  }
+  
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  .toggle-switch input:checked + .toggle-slider {
+    background-color: #00ffff;
+  }
+  
+  .toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+  }
+  
+  .toggle-slider:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .toggle-switch input:checked + .toggle-slider:hover {
+    background-color: #00e6e6;
+  }
+  
+  .ghost-vision-active {
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(0, 255, 255, 0.1);
+    border-radius: 6px;
+    text-align: center;
+  }
+  
+  .ghost-indicator {
+    font-size: 0.85rem;
+    color: #00ffff;
+    font-weight: 600;
+    animation: ghostPulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes ghostPulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
     }
   }
 

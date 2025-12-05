@@ -20,6 +20,9 @@ dist/
 # Data e modelli
 backend/uploads/
 backend/models/
+backend/ghost_frames/
+backend/processed_videos/
+cache/
 *.h5
 *.npy
 

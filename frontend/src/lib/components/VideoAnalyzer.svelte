@@ -515,8 +515,22 @@
       const data = await response.json();
 
       if (data.status === 'success') {
+        // Debug: log dei dati ricevuti dal backend
+        console.log('📥 Dati ricevuti dal backend:', {
+          ghost_vision_available: data.ghost_vision_available,
+          ghost_frames_count: data.ghost_frames_count,
+          skeleton_video_url: data.skeleton_video_url
+        });
+        
         // Salva i risultati completi nello store
         analysisStore.setResults(data);
+        
+        // Debug: verifica cosa è stato salvato nello store
+        console.log('💾 Risultati salvati nello store:', {
+          ghost_vision_available: data.ghost_vision_available,
+          ghost_frames_count: data.ghost_frames_count
+        });
+        
         // Salva feature ranges se disponibili (dal backend, per analisi future)
         if (data.feature_ranges) {
           const frontendRanges = {

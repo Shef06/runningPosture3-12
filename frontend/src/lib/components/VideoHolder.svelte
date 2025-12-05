@@ -3,11 +3,13 @@
   import { onMount, onDestroy } from 'svelte';
   import VideoAnalyzer from './VideoAnalyzer.svelte';
   import BaselineUploader from './BaselineUploader.svelte';
+  import GhostVisionOverlay from './GhostVisionOverlay.svelte';
   
   let videoElement;
   let stream;
   let mediaRecorder;
   let recordedChunks = [];
+  let skeletonVideoElement = null; // Reference for skeleton video (for ghost overlay)
   
   $: videoUrl = $analysisStore.videoUrl;
   $: isRecording = $analysisStore.isRecording;
@@ -18,6 +20,7 @@
   $: baselineVideoUrls = $analysisStore.baselineVideoUrls;
   $: isAnalyzing = $analysisStore.isAnalyzing;
   $: results = $analysisStore.results;
+  $: ghostVisionEnabled = $analysisStore.ghostVisionEnabled;
   
   // URL del backend (stesso pattern usato negli altri componenti)
   const API_BASE_URL = 'http://localhost:5000';
@@ -164,6 +167,7 @@
       <!-- Video con scheletro dai risultati - PRIORITÀ ALTA -->
       <div class="skeleton-video-wrapper">
         <video 
+          bind:this={skeletonVideoElement}
           controls 
           class="video-display skeleton-video"
           src={skeletonVideoUrl}
@@ -210,6 +214,12 @@
         >
           Il tuo browser non supporta la riproduzione video.
         </video>
+        
+        <!-- Ghost Vision Overlay -->
+        {#if ghostVisionEnabled && skeletonVideoElement}
+          <GhostVisionOverlay videoElement={skeletonVideoElement} />
+        {/if}
+        
         <div class="skeleton-video-label">
           <span class="label-icon">🎬</span>
           <span class="label-text">Video con Analisi Scheletro</span>
