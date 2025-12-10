@@ -117,6 +117,79 @@
       console.log('⏸️ Overlay rimosso dal video');
     }
   }
+  
+  // Stato per "Add to Baseline"
+  let isAddingToBaseline = false;
+  let addToBaselineResult = null;
+  let addToBaselineError = null;
+  
+  // Funzione per aggiungere corsa alla baseline incrementale
+  async function addToBaseline() {
+    if (isAddingToBaseline) return;
+    
+    try {
+      isAddingToBaseline = true;
+      addToBaselineError = null;
+      addToBaselineResult = null;
+      
+      console.log('='.repeat(60));
+      console.log('📊 AGGIUNTA CORSA ALLA BASELINE INCREMENTALE');
+      console.log('='.repeat(60));
+      
+      // Genera un ID univoco per questa analisi
+      const analysis_id = `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log('Analysis ID:', analysis_id);
+      console.log('Dati analisi:', results);
+      
+      // Invia richiesta al backend
+      const response = await fetch('http://localhost:5000/api/baseline/add-run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          analysis_id: analysis_id,
+          analysis_data: {
+            ...results,
+            // Assicurati che skeleton_video_path sia presente se disponibile
+            skeleton_video_path: results.skeleton_video_path || null
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Errore nell\'aggiunta alla baseline');
+      }
+      
+      const data = await response.json();
+      
+      console.log('✅ Risposta:', data);
+      console.log('   Totale corse:', data.run_count);
+      console.log('   Nuova migliore:', data.is_new_best ? 'Sì' : 'No');
+      console.log('   Errore corsa:', data.run_error?.toFixed(4));
+      console.log('='.repeat(60));
+      
+      addToBaselineResult = data;
+      
+      // Auto-nascondi messaggio successo dopo 5 secondi
+      setTimeout(() => {
+        addToBaselineResult = null;
+      }, 5000);
+      
+    } catch (error) {
+      console.error('❌ Errore nell\'aggiunta alla baseline:', error);
+      addToBaselineError = error.message;
+      
+      // Auto-nascondi messaggio errore dopo 7 secondi
+      setTimeout(() => {
+        addToBaselineError = null;
+      }, 7000);
+    } finally {
+      isAddingToBaseline = false;
+    }
+  }
 </script>
 
 <div class="step-container">
@@ -378,6 +451,64 @@
           {/if}
         </div>
         {/if}
+        
+        <!-- Add to Baseline Section -->
+        <div class="add-to-baseline-section">
+          <div class="add-to-baseline-header">
+            <div class="add-to-baseline-info">
+              <h5>📈 Migliora la Baseline</h5>
+              <p>
+                {#if results.anomaly_level === 'Ottimale'}
+                  Questa corsa è eccellente! Aggiungila alla baseline per migliorare i riferimenti futuri.
+                {:else if results.anomaly_level === 'Attenzione'}
+                  Questa corsa mostra alcune deviazioni. Aggiungila solo se ritieni sia rappresentativa.
+                {:else}
+                  Questa corsa mostra deviazioni significative. Non consigliato aggiungerla alla baseline.
+                {/if}
+              </p>
+            </div>
+            <button 
+              class="add-baseline-btn {results.anomaly_level === 'Critico' ? 'disabled' : ''}"
+              on:click={addToBaseline}
+              disabled={isAddingToBaseline || results.anomaly_level === 'Critico'}
+            >
+              {#if isAddingToBaseline}
+                <span class="spinner"></span>
+                Aggiungendo...
+              {:else}
+                📊 Aggiungi a Baseline
+              {/if}
+            </button>
+          </div>
+          
+          <!-- Messaggio successo -->
+          {#if addToBaselineResult}
+          <div class="baseline-result-message success">
+            <div class="result-icon">✅</div>
+            <div class="result-content">
+              <strong>Corsa aggiunta con successo!</strong>
+              <div class="result-details">
+                <span>Totale corse: {addToBaselineResult.run_count}</span>
+                {#if addToBaselineResult.is_new_best}
+                  <span class="badge-best">🏆 Nuova migliore corsa!</span>
+                {/if}
+                <span>Errore corsa: {addToBaselineResult.run_error?.toFixed(4) || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+          {/if}
+          
+          <!-- Messaggio errore -->
+          {#if addToBaselineError}
+          <div class="baseline-result-message error">
+            <div class="result-icon">❌</div>
+            <div class="result-content">
+              <strong>Errore nell'aggiunta alla baseline</strong>
+              <p>{addToBaselineError}</p>
+            </div>
+          </div>
+          {/if}
+        </div>
         
         {#if results.metrics}
           <div class="metrics-section">
@@ -1392,6 +1523,187 @@
     }
     50% {
       opacity: 0.6;
+    }
+  }
+  
+  /* Add to Baseline Section Styles */
+  .add-to-baseline-section {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 8px;
+  }
+  
+  .add-to-baseline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .add-to-baseline-info {
+    flex: 1;
+  }
+  
+  .add-to-baseline-info h5 {
+    font-size: 0.95rem;
+    margin: 0 0 0.5rem 0;
+    color: var(--text-light);
+    font-weight: 600;
+  }
+  
+  .add-to-baseline-info p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
+  }
+  
+  .add-baseline-btn {
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  }
+  
+  .add-baseline-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  }
+  
+  .add-baseline-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  
+  .add-baseline-btn:disabled,
+  .add-baseline-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(100, 100, 100, 0.3);
+    box-shadow: none;
+  }
+  
+  .add-baseline-btn .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .baseline-result-message {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    animation: slideIn 0.3s ease;
+  }
+  
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .baseline-result-message.success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  
+  .baseline-result-message.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+  
+  .result-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+  
+  .result-content {
+    flex: 1;
+  }
+  
+  .result-content strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-light);
+  }
+  
+  .result-content p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  
+  .result-details {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  
+  .result-details span {
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+  }
+  
+  .badge-best {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: white !important;
+    font-weight: 600;
+    animation: badgePulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes badgePulse {
+    0%, 100% {
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.8);
+    }
+  }
+  
+  /* Responsive per mobile */
+  @media (max-width: 768px) {
+    .add-to-baseline-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .add-baseline-btn {
+      width: 100%;
+      justify-content: center;
     }
   }
 

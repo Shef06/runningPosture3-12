@@ -14,6 +14,7 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import Config
 from pose_engine import PoseEngine
+from baseline_manager import BaselineHistory
 
 # Configurazione logging
 def setup_logging():
@@ -43,6 +44,12 @@ Config.init_app()
 
 # Percorso del file baseline JSON
 BASELINE_JSON_PATH = os.path.join(Config.MODEL_FOLDER, 'baseline.json')
+
+# Percorso del file baseline history JSON (per baseline incrementale)
+BASELINE_HISTORY_PATH = os.path.join(Config.MODEL_FOLDER, 'baseline_history.json')
+
+# Inizializza BaselineHistory
+baseline_history = BaselineHistory(BASELINE_HISTORY_PATH, Config.GHOST_FRAMES_FOLDER)
 
 # Percorsi frontend
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -1093,6 +1100,124 @@ def save_analysis():
         return jsonify({
             'status': 'error',
             'message': f'Errore nel salvataggio: {str(e)}'
+        }), 500
+
+
+@app.route('/api/baseline/add-run', methods=['POST'])
+def add_run_to_baseline():
+    """
+    Endpoint per aggiungere una corsa alla baseline incrementale
+    
+    Body JSON:
+    {
+        'analysis_id': 'ID univoco dell\'analisi',
+        'analysis_data': {...}  # Dati completi dell'analisi (da detect_anomaly)
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Nessun dato fornito'
+            }), 400
+        
+        analysis_id = data.get('analysis_id')
+        analysis_data = data.get('analysis_data')
+        
+        if not analysis_id or not analysis_data:
+            return jsonify({
+                'status': 'error',
+                'message': 'analysis_id e analysis_data sono obbligatori'
+            }), 400
+        
+        logger.info("=" * 60)
+        logger.info(f"📊 AGGIUNTA CORSA ALLA BASELINE INCREMENTALE")
+        logger.info(f"Analysis ID: {analysis_id}")
+        logger.info("=" * 60)
+        
+        # Estrai skeleton_video_path dai dati se disponibile
+        skeleton_video_path = analysis_data.get('skeleton_video_path')
+        
+        # Aggiorna baseline incrementale
+        result = baseline_history.update(
+            analysis_data=analysis_data,
+            analysis_id=analysis_id,
+            skeleton_video_path=skeleton_video_path
+        )
+        
+        if result['status'] == 'error':
+            return jsonify(result), 400
+        
+        logger.info(f"✅ Corsa aggiunta alla baseline incrementale")
+        logger.info(f"   Totale corse: {result['run_count']}")
+        logger.info(f"   Nuova migliore: {'Sì' if result['is_new_best'] else 'No'}")
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"❌ Errore nell'aggiunta corsa: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'Errore interno: {str(e)}'
+        }), 500
+
+
+@app.route('/api/baseline/history', methods=['GET'])
+def get_baseline_history():
+    """
+    Endpoint per ottenere lo storico della baseline incrementale
+    """
+    try:
+        # Carica storico
+        baseline_history.load()
+        
+        # Ottieni summary
+        summary = baseline_history.get_stats_summary()
+        
+        return jsonify({
+            'status': 'success',
+            'history': summary
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Errore nel caricare storico: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'Errore interno: {str(e)}'
+        }), 500
+
+
+@app.route('/api/baseline/current', methods=['GET'])
+def get_current_baseline():
+    """
+    Endpoint per ottenere la baseline corrente (da baseline incrementale)
+    Compatibile con il sistema esistente
+    """
+    try:
+        # Carica storico
+        baseline_history.load()
+        
+        # Ottieni baseline corrente
+        current_baseline = baseline_history.get_current_baseline()
+        
+        if current_baseline is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Nessuna baseline disponibile. Aggiungi almeno una corsa.'
+            }), 404
+        
+        return jsonify({
+            'status': 'success',
+            'baseline': current_baseline
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Errore nel caricare baseline: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'Errore interno: {str(e)}'
         }), 500
 
 
